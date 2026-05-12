@@ -1,0 +1,28 @@
+{
+  "forbiddenDomains": ["reddit.com", "www.reddit.com", "wikipedia.org", "www.wikipedia.org", "yahoo.com", "finance.yahoo.com", "stooq.com"],
+  "allowedDomains": [
+    "fred.stlouisfed.org",
+    "www.eia.gov",
+    "eia.gov",
+    "www.energy.gov",
+    "energy.gov",
+    "www.ftc.gov",
+    "ftc.gov",
+    "www.nber.org",
+    "nber.org",
+    "www.spglobal.com",
+    "spglobal.com",
+    "www.nasdaq.com",
+    "nasdaq.com",
+    "www.federalreservehistory.org",
+    "federalreservehistory.org",
+    "www.federalreserve.gov",
+    "federalreserve.gov",
+    "www.iea.org",
+    "iea.org",
+    "www.opec.org",
+    "opec.org",
+    "www.whitehouse.gov",
+    "whitehouse.gov"
+  ]
+}

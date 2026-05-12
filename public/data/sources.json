@@ -1,0 +1,207 @@
+{
+  "generatedAt": "2026-05-12T16:49:31.048Z",
+  "sources": [
+    {
+      "id": "gasregw",
+      "label": "US Regular All Formulations Gas Price",
+      "publisher": "U.S. Energy Information Administration via FRED",
+      "url": "https://fred.stlouisfed.org/series/GASREGW"
+    },
+    {
+      "id": "nasdaqcom",
+      "label": "NASDAQ Composite",
+      "publisher": "Nasdaq, Inc. via FRED",
+      "url": "https://fred.stlouisfed.org/series/NASDAQCOM"
+    },
+    {
+      "id": "usrec",
+      "label": "NBER recession indicator",
+      "publisher": "Federal Reserve Bank of St. Louis / NBER via FRED",
+      "url": "https://fred.stlouisfed.org/series/USREC"
+    },
+    {
+      "id": "djia-context",
+      "label": "Dow Jones Industrial Average context",
+      "publisher": "S&P Dow Jones Indices / FRED",
+      "url": "https://fred.stlouisfed.org/series/DJIA"
+    }
+  ],
+  "eventSources": [
+    {
+      "id": "gulf-war-supply-shock",
+      "date": "1990-08-02",
+      "title": "Iraq invades Kuwait",
+      "category": "war",
+      "impact": "supply-risk",
+      "confidence": "high",
+      "summary": "The invasion disrupted Iraqi and Kuwaiti supply and contributed to a rapid crude oil price run-up.",
+      "whyIncluded": "A canonical geopolitical oil shock inside the weekly gasoline price record.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=730",
+        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+      ]
+    },
+    {
+      "id": "asian-financial-crisis-oil-demand",
+      "date": "1998-12-01",
+      "title": "Oil prices slump during weak demand period",
+      "category": "macro",
+      "impact": "demand-drop",
+      "confidence": "medium",
+      "summary": "Weak petroleum demand and OPEC production choices helped push oil prices sharply lower in the late 1990s.",
+      "whyIncluded": "Shows that gas-price pressure can come from demand weakness, not only wars or supply shocks.",
+      "sources": [
+        "https://www.eia.gov/kids/history-of-energy/timelines/oil-petroleum.php",
+        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+      ]
+    },
+    {
+      "id": "opec-cuts-1999",
+      "date": "1999-03-23",
+      "title": "OPEC production cuts help reverse price collapse",
+      "category": "opec",
+      "impact": "supply-cut",
+      "confidence": "medium",
+      "summary": "A late-1990s oil price shock reversed as OPEC and other producers reduced supply after the 1998 collapse.",
+      "whyIncluded": "A clear example of coordinated producer action affecting oil-market balance.",
+      "sources": [
+        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008",
+        "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php"
+      ]
+    },
+    {
+      "id": "venezuela-strike",
+      "date": "2002-12-02",
+      "title": "Venezuelan oil strike",
+      "category": "supply",
+      "impact": "supply-disruption",
+      "confidence": "high",
+      "summary": "A major Venezuelan strike disrupted oil production and exports, adding pressure to global crude markets.",
+      "whyIncluded": "EIA identifies the strike as one of the major recent crude oil supply disruptions.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=730"
+      ]
+    },
+    {
+      "id": "iraq-war-2003",
+      "date": "2003-03-20",
+      "title": "U.S.-led invasion of Iraq",
+      "category": "war",
+      "impact": "geopolitical-risk",
+      "confidence": "medium",
+      "summary": "Middle East hostilities and supply-risk concerns were part of the early-2000s oil-price environment.",
+      "whyIncluded": "A geopolitically important moment near the beginning of the 2000s oil-price climb.",
+      "sources": [
+        "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php",
+        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+      ]
+    },
+    {
+      "id": "oil-price-spike-2008",
+      "date": "2008-07-14",
+      "title": "Oil price spike before financial crisis collapse",
+      "category": "macro",
+      "impact": "price-spike",
+      "confidence": "high",
+      "summary": "Oil prices reached extreme highs in 2008 before the global financial crisis drove demand and prices downward.",
+      "whyIncluded": "A major modern example of gasoline prices, crude oil, and macro stress moving together.",
+      "sources": [
+        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008",
+        "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php"
+      ]
+    },
+    {
+      "id": "arab-spring-libya",
+      "date": "2011-02-15",
+      "title": "Libya conflict and Arab Spring supply risk",
+      "category": "war",
+      "impact": "supply-risk",
+      "confidence": "medium",
+      "summary": "Political instability in oil-producing regions raised supply-risk concerns during a period of elevated crude prices.",
+      "whyIncluded": "A post-2008 geopolitical risk period visible in oil and gasoline markets.",
+      "sources": [
+        "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php"
+      ]
+    },
+    {
+      "id": "oil-price-collapse-2014",
+      "date": "2014-11-27",
+      "title": "OPEC maintains output amid oil-price collapse",
+      "category": "opec",
+      "impact": "price-drop",
+      "confidence": "medium",
+      "summary": "Global crude markets shifted into oversupply, contributing to a steep oil-price decline from 2014 into 2016.",
+      "whyIncluded": "A major OPEC-era supply decision that coincides with a clear gasoline-price downshift.",
+      "sources": [
+        "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php"
+      ]
+    },
+    {
+      "id": "abqaiq-attack",
+      "date": "2019-09-14",
+      "title": "Attack on Saudi Aramco Abqaiq and Khurais facilities",
+      "category": "supply",
+      "impact": "supply-disruption",
+      "confidence": "high",
+      "summary": "Attacks disrupted Saudi crude production and showed how disruption risk can move prices rapidly.",
+      "whyIncluded": "EIA specifically analyzes the immediate price effect of this supply-disruption risk.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=42675"
+      ]
+    },
+    {
+      "id": "covid-demand-collapse",
+      "date": "2020-03-13",
+      "title": "COVID-19 emergency and gasoline demand collapse",
+      "category": "macro",
+      "impact": "demand-drop",
+      "confidence": "high",
+      "summary": "Pandemic responses sharply reduced travel and gasoline demand, pushing U.S. gasoline prices to multi-year lows.",
+      "whyIncluded": "A demand-side shock that strongly affected both fuel prices and equity markets.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?form=MG0AV3&id=46356",
+        "https://www.eia.gov/todayinenergy/detail.php?id=66005"
+      ]
+    },
+    {
+      "id": "russia-ukraine-2022",
+      "date": "2022-02-24",
+      "title": "Russia further invades Ukraine",
+      "category": "war",
+      "impact": "geopolitical-risk",
+      "confidence": "high",
+      "summary": "Russia's full-scale invasion of Ukraine and sanctions risk pushed crude oil above $100 per barrel and raised gasoline-price expectations.",
+      "whyIncluded": "One of the clearest recent geopolitical shocks in both gasoline and market data.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=51498&lang=en",
+        "https://www.eia.gov/todayinenergy/detail.php?id=55099"
+      ]
+    },
+    {
+      "id": "spr-releases-2022",
+      "date": "2022-06-08",
+      "title": "Crude prices peak then ease as supply and demand conditions shift",
+      "category": "policy",
+      "impact": "price-drop",
+      "confidence": "medium",
+      "summary": "Crude prices generally fell after early June 2022 as recession concerns, China demand weakness, and strategic reserve releases affected supply-demand balance.",
+      "whyIncluded": "Shows that policy, demand, and inventories can matter alongside war-related risk.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=55079&os=winDhGBITyl"
+      ]
+    },
+    {
+      "id": "hormuz-chokepoint-context",
+      "date": "2023-11-14",
+      "title": "Strait of Hormuz chokepoint context",
+      "category": "supply",
+      "impact": "transit-risk",
+      "confidence": "high",
+      "summary": "EIA identifies the Strait of Hormuz as the world's most important oil transit chokepoint, with roughly one-fifth of global petroleum liquids consumption moving through it in recent years.",
+      "whyIncluded": "Adds trusted context for interpreting Persian Gulf blockade or shipping-risk scenarios without claiming an unsourced closure event.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=61002&os=f"
+      ]
+    }
+  ]
+}
