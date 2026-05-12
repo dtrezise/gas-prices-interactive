@@ -3,6 +3,8 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "30 11 * * 2"
   workflow_dispatch:
 
 permissions:
@@ -32,6 +34,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Update official data
+        run: npm run data:update
 
       - name: Verify trusted data
         run: npm run data:verify

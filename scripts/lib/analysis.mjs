@@ -1,12 +1,36 @@
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
-  const headers = lines.shift().split(",");
+  const headers = parseCsvLine(lines.shift());
   return lines
     .map((line) => {
-      const values = line.split(",");
+      const values = parseCsvLine(line);
       return Object.fromEntries(headers.map((header, index) => [header, values[index]]));
     })
     .filter((row) => Object.values(row).some(Boolean));
+}
+
+export function parseCsvLine(line) {
+  const values = [];
+  let value = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === '"') {
+      if (quoted && line[index + 1] === '"') {
+        value += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (char === "," && !quoted) {
+      values.push(value);
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+  values.push(value);
+  return values;
 }
 
 export function toNumber(value) {

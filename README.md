@@ -1,8 +1,8 @@
 # Gas Prices Interactive
 
-Interactive GitHub Pages site exploring U.S. weekly gasoline prices from 1990 onward, with verified overlays for market context, recessions, presidential terms, and major energy events.
+Interactive GitHub Pages site exploring U.S. gasoline prices from 1949 onward, with verified overlays for European petrol, market context, recessions, presidential terms, and major energy events.
 
-The site also includes a European petrol view using the European Commission Weekly Oil Bulletin's EU average Euro-super 95 history from 2005 onward.
+The long view uses annual EIA historical gasoline data before 1990 and weekly EIA/FRED gasoline data from 1990 onward. European petrol uses the European Commission Weekly Oil Bulletin's EU average Euro-super 95 history from 2005 onward, converted to USD/gallon using European Central Bank reference rates.
 
 ## Source Policy
 
@@ -19,10 +19,13 @@ npm run build
 npm run dev
 ```
 
+GitHub Actions also runs a scheduled Tuesday refresh that fetches official data, verifies it, builds the static artifact, and republishes GitHub Pages.
+
 ## Notes
 
 - Gasoline data: EIA `GASREGW` via FRED.
-- European petrol data: European Commission Weekly Oil Bulletin, parsed from the official price-history workbook in EUR/liter.
+- Long-view annual gasoline data: EIA Monthly Energy Review Table 9.4.
+- European petrol data: European Commission Weekly Oil Bulletin, parsed from the official price-history workbook in EUR/liter and converted with ECB USD/EUR reference rates.
 - Market proxy: Nasdaq Composite via FRED for 1990-present coverage.
 - DJIA is cited as official context, but the raw long DJIA series is not redistributed because of source copyright restrictions.
 - Static data is generated into `public/data/` so GitHub Pages does not require API secrets.

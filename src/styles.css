@@ -355,10 +355,12 @@ h3 {
 .recession-span {
   fill: var(--recession);
   opacity: 0.16;
+  pointer-events: none;
 }
 
 .president-span {
   opacity: 0.22;
+  pointer-events: none;
 }
 
 .president-span.democratic {
@@ -373,6 +375,7 @@ h3 {
   fill: #26313e;
   font-size: 12px;
   font-weight: 700;
+  pointer-events: none;
 }
 
 .event-marker line {
@@ -386,21 +389,6 @@ h3 {
   fill: var(--event);
   stroke: #fff;
   stroke-width: 2;
-}
-
-.event-title-tooltip {
-  pointer-events: none;
-}
-
-.event-title-tooltip rect {
-  fill: rgba(24, 32, 42, 0.92);
-  stroke: rgba(255, 255, 255, 0.2);
-}
-
-.event-title-tooltip text {
-  fill: #fff;
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .event-marker.war circle {
@@ -431,6 +419,20 @@ h3 {
   stroke-width: 3;
 }
 
+.cadence-boundary line {
+  stroke: #25313d;
+  stroke-dasharray: 8 8;
+  stroke-width: 1.5;
+  opacity: 0.42;
+}
+
+.cadence-boundary text {
+  fill: #516274;
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
 .legend-row {
   flex-wrap: wrap;
   margin-top: 12px;
@@ -442,6 +444,7 @@ h3 {
   align-items: center;
   gap: 7px;
   font-size: 0.86rem;
+  cursor: help;
 }
 
 .legend::before {
@@ -484,19 +487,6 @@ h3 {
 .source-note p {
   margin: 0;
   color: #2d634b;
-}
-
-.europe-summary {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  color: var(--muted);
-}
-
-.europe-summary strong {
-  color: var(--europe);
-  font-size: 1.25rem;
 }
 
 .list-view,

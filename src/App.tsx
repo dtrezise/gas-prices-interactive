@@ -1,17 +1,25 @@
 import { AlertCircle, BarChart3, BookOpen, CalendarRange, CheckCircle2, ExternalLink, Filter, Fuel, Globe2, Landmark, LineChart, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { clamp, dateToMs, extent, formatDate, formatYear, nearestPoint, niceMoney, pathFromPoints } from "./lib/chart";
+import { clamp, dateToMs, extent, formatDate, formatYear, niceMoney, pathFromPoints } from "./lib/chart";
 import { loadDataset } from "./lib/data";
-import type { AppDataset, EuropeSeriesPoint, EventMarker, OverlayKey, SeriesPoint, ViewMode } from "./types";
+import type { AnnualSeriesPoint, AppDataset, EuropeSeriesPoint, EventMarker, OverlayKey, SeriesPoint, ViewMode } from "./types";
+
+type ChartPoint = (SeriesPoint | AnnualSeriesPoint) & {
+  marketIndex?: number | null;
+  marketNormalized?: number | null;
+  marketWeeklyChangePct?: number | null;
+};
 
 const overlays: Array<{ key: OverlayKey; label: string }> = [
   { key: "market", label: "Market" },
+  { key: "europe", label: "Europe" },
   { key: "presidents", label: "Presidents" },
   { key: "events", label: "Events" },
   { key: "recessions", label: "Recessions" },
 ];
 
 const ranges = [
+  { label: "1949", start: "1949-01-01" },
   { label: "1990", start: "1990-01-01" },
   { label: "2000", start: "2000-01-01" },
   { label: "2010", start: "2010-01-01" },
@@ -25,6 +33,7 @@ function App() {
   const [startDate, setStartDate] = useState("1990-01-01");
   const [activeOverlays, setActiveOverlays] = useState<Record<OverlayKey, boolean>>({
     market: true,
+    europe: true,
     presidents: true,
     events: true,
     recessions: true,
@@ -34,7 +43,16 @@ function App() {
     loadDataset().then(setDataset).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
 
-  const points = useMemo(() => dataset?.series.filter((point) => point.date >= startDate) ?? [], [dataset, startDate]);
+  const points = useMemo(() => {
+    if (!dataset) return [];
+    if (startDate < "1990-01-01") {
+      return [
+        ...dataset.annualSeries.filter((point) => point.date >= startDate && point.date < "1990-01-01"),
+        ...dataset.series,
+      ];
+    }
+    return dataset.series.filter((point) => point.date >= startDate);
+  }, [dataset, startDate]);
 
   if (error) {
     return (
@@ -83,14 +101,13 @@ function App() {
         <Metric
           icon={<Globe2 />}
           label="EU petrol"
-          value={dataset.europeSeries.at(-1) ? `€${dataset.europeSeries.at(-1)!.euGasEurPerLiter.toFixed(2)}/L` : "n/a"}
+          value={dataset.europeSeries.at(-1)?.euGasUsdPerGallon ? niceMoney(dataset.europeSeries.at(-1)!.euGasUsdPerGallon!) : "n/a"}
           detail={dataset.europeSeries.at(-1) ? formatDate(dataset.europeSeries.at(-1)!.date) : ""}
         />
       </section>
 
       <nav className="mode-tabs" aria-label="Views">
         <ModeButton active={mode === "timeline"} icon={<LineChart />} label="Timeline" onClick={() => setMode("timeline")} />
-        <ModeButton active={mode === "europe"} icon={<Globe2 />} label="Europe" onClick={() => setMode("europe")} />
         <ModeButton active={mode === "events"} icon={<CalendarRange />} label="Events" onClick={() => setMode("events")} />
         <ModeButton active={mode === "administrations"} icon={<Landmark />} label="Administrations" onClick={() => setMode("administrations")} />
         <ModeButton active={mode === "research"} icon={<BookOpen />} label="Research" onClick={() => setMode("research")} />
@@ -127,16 +144,14 @@ function App() {
       )}
 
       {mode === "events" && <EventsView events={dataset.events} />}
-      {mode === "europe" && <EuropeView dataset={dataset} />}
       {mode === "administrations" && <AdministrationView dataset={dataset} />}
       {mode === "research" && <ResearchCanvas dataset={dataset} />}
     </main>
   );
 }
 
-function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset: AppDataset; points: SeriesPoint[]; overlays: Record<OverlayKey, boolean> }) {
-  const [hover, setHover] = useState<SeriesPoint | null>(null);
-  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
+function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset: AppDataset; points: ChartPoint[]; overlays: Record<OverlayKey, boolean> }) {
+  const [hover, setHover] = useState<ChartPoint | null>(null);
   const width = 1180;
   const height = 560;
   const margin = { top: 26, right: 74, bottom: 54, left: 74 };
@@ -145,24 +160,30 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
 
   const [minDate, maxDate] = extent(points.map((point) => dateToMs(point.date)));
   const minGas = 0;
-  const maxGas = 10;
+  const visibleEurope = dataset.europeSeries.filter((point) => point.date >= points[0].date && point.date <= points.at(-1)!.date && point.euGasUsdPerGallon != null);
+  const maxVisiblePrice = Math.max(...points.map((point) => point.gasPrice), ...visibleEurope.map((point) => point.euGasUsdPerGallon ?? 0), 10);
+  const maxGas = Math.ceil((maxVisiblePrice * 1.08) / 2.5) * 2.5;
   const marketValues = points.map((point) => point.marketNormalized).filter((value): value is number => value != null);
-  const [minMarket, maxMarket] = extent(marketValues);
+  const [minMarket, maxMarket] = marketValues.length ? extent(marketValues) : [0, 1];
 
   const x = (date: string) => margin.left + ((dateToMs(date) - minDate) / (maxDate - minDate)) * innerWidth;
   const yGas = (value: number) => margin.top + (1 - (value - minGas) / (maxGas - minGas)) * innerHeight;
   const yMarket = (value: number) => margin.top + (1 - (value - minMarket) / (maxMarket - minMarket)) * innerHeight;
   const gasPath = pathFromPoints(points, (point) => x(point.date), (point) => yGas(point.gasPrice));
   const marketPath = pathFromPoints(points, (point) => x(point.date), (point) => (point.marketNormalized == null ? null : yMarket(point.marketNormalized)));
+  const europePath = pathFromPoints(visibleEurope, (point) => x(point.date), (point) => (point.euGasUsdPerGallon == null ? null : yGas(point.euGasUsdPerGallon)));
   const selected = hover ?? points.at(-1)!;
+  const selectedEurope = nearestEuropePoint(visibleEurope, selected.date);
   const visibleEvents = dataset.events.filter((event) => event.date >= points[0].date && event.date <= points.at(-1)!.date);
   const years = buildYearTicks(points[0].date, points.at(-1)!.date);
+  const isLongView = points[0].date < "1990-01-01";
+  const yTicks = buildMoneyTicks(maxGas);
 
   function handleMove(event: React.PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const px = clamp(((event.clientX - rect.left) / rect.width) * width, margin.left, width - margin.right);
     const target = minDate + ((px - margin.left) / innerWidth) * (maxDate - minDate);
-    setHover(nearestPoint(points, target));
+    setHover(nearestChartPoint(points, target));
   }
 
   return (
@@ -170,12 +191,15 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
       <div className="chart-head">
         <div>
           <h2>Weekly price timeline</h2>
-          <p>Gasoline is dollars per gallon with a fixed $10 ceiling. The market line is indexed to 100 at the selected start date.</p>
+          <p>
+            Gasoline is dollars per gallon. {isLongView ? "Pre-1990 U.S. prices are annual context; 1990 onward is weekly detail. " : ""}
+            Europe is converted to USD/gallon with ECB exchange rates.
+          </p>
         </div>
         <div className="readout">
           <span>{formatDate(selected.date)}</span>
           <strong>{niceMoney(selected.gasPrice)}</strong>
-          <small>{selected.marketNormalized ? `Market ${selected.marketNormalized.toFixed(1)}` : "Market n/a"}</small>
+          <small>{selectedEurope?.euGasUsdPerGallon ? `EU ${niceMoney(selectedEurope.euGasUsdPerGallon)}` : selected.marketNormalized ? `Market ${selected.marketNormalized.toFixed(1)}` : "Market n/a"}</small>
         </div>
       </div>
       <div className="chart-scroll">
@@ -191,7 +215,7 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
           </g>
         ))}
 
-        {[0, 2.5, 5, 7.5, 10].map((value) => (
+        {yTicks.map((value) => (
           <g key={value}>
             <line className="grid-line horizontal" x1={margin.left} x2={width - margin.right} y1={yGas(value)} y2={yGas(value)} />
             <text className="axis-label" x={margin.left - 12} y={yGas(value) + 4} textAnchor="end">
@@ -232,26 +256,23 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
               </g>
             ))}
 
-        {activeOverlays.market && <path className="market-line" d={marketPath} />}
+        {activeOverlays.market && marketValues.length > 0 && <path className="market-line" d={marketPath} />}
+        {activeOverlays.europe && visibleEurope.length > 0 && <path className="europe-line" d={europePath} />}
         <path className="gas-line" d={gasPath} />
+
+        {isLongView && (
+          <g className="cadence-boundary">
+            <line x1={x("1990-01-01")} x2={x("1990-01-01")} y1={margin.top} y2={height - margin.bottom} />
+            <text x={x("1990-01-01") + 8} y={height - margin.bottom - 10}>weekly detail begins</text>
+          </g>
+        )}
 
         {activeOverlays.events &&
           visibleEvents.map((event) => (
-            <g
-              key={event.id}
-              className={`event-marker ${event.category}`}
-              onPointerEnter={() => setHoveredEventId(event.id)}
-              onPointerLeave={() => setHoveredEventId(null)}
-            >
+            <g key={event.id} className={`event-marker ${event.category}`}>
               <line x1={x(event.date)} x2={x(event.date)} y1={margin.top + 24} y2={height - margin.bottom} />
               <circle cx={x(event.date)} cy={margin.top + 24} r="6" />
               <title>{event.title}</title>
-              {hoveredEventId === event.id && (
-                <g className="event-title-tooltip" transform={`translate(${clamp(x(event.date), margin.left + 120, width - margin.right - 120)}, ${margin.top + 54})`}>
-                  <rect x="-118" y="-24" width="236" height="32" rx="8" />
-                  <text textAnchor="middle">{event.title}</text>
-                </g>
-              )}
             </g>
           ))}
 
@@ -262,126 +283,11 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
       </svg>
       </div>
       <div className="legend-row">
-        <span className="legend gas">Gasoline</span>
-        <span className="legend market">NASDAQ proxy</span>
-        <span className="legend recession">NBER recession</span>
-        <span className="legend event">Verified event</span>
-      </div>
-    </section>
-  );
-}
-
-function EuropeView({ dataset }: { dataset: AppDataset }) {
-  const [startDate, setStartDate] = useState("2005-01-01");
-  const points = dataset.europeSeries.filter((point) => point.date >= startDate);
-  const first = points[0];
-  const last = points.at(-1);
-  const change = first && last ? ((last.euGasEurPerLiter - first.euGasEurPerLiter) / first.euGasEurPerLiter) * 100 : 0;
-
-  return (
-    <>
-      <section className="controls-band" aria-label="Europe timeline controls">
-        <div className="segmented" aria-label="Europe start year">
-          {[
-            { label: "2005", start: "2005-01-01" },
-            { label: "2010", start: "2010-01-01" },
-            { label: "2015", start: "2015-01-01" },
-            { label: "2020", start: "2020-01-01" },
-          ].map((range) => (
-            <button key={range.start} className={startDate === range.start ? "active" : ""} onClick={() => setStartDate(range.start)}>
-              {range.label}
-            </button>
-          ))}
-        </div>
-        <div className="europe-summary">
-          <span>{last ? `Latest: €${last.euGasEurPerLiter.toFixed(2)}/L` : "Latest: n/a"}</span>
-          <strong>{change >= 0 ? "+" : ""}{change.toFixed(1)}%</strong>
-        </div>
-      </section>
-      <EuropeChart points={points} />
-      <section className="source-note">
-        <CheckCircle2 aria-hidden="true" />
-        <p>
-          European prices are EU average Euro-super 95 consumer prices including taxes, reported by the European Commission Weekly Oil Bulletin in EUR/liter.
-        </p>
-      </section>
-    </>
-  );
-}
-
-function EuropeChart({ points }: { points: EuropeSeriesPoint[] }) {
-  const [hover, setHover] = useState<EuropeSeriesPoint | null>(null);
-  const width = 1180;
-  const height = 500;
-  const margin = { top: 26, right: 74, bottom: 54, left: 74 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  const [minDate, maxDate] = extent(points.map((point) => dateToMs(point.date)));
-  const minPrice = 0;
-  const maxPrice = 3;
-  const x = (date: string) => margin.left + ((dateToMs(date) - minDate) / (maxDate - minDate)) * innerWidth;
-  const y = (value: number) => margin.top + (1 - (value - minPrice) / (maxPrice - minPrice)) * innerHeight;
-  const chartPath = pathFromPoints(points, (point) => x(point.date), (point) => y(point.euGasEurPerLiter));
-  const selected = hover ?? points.at(-1)!;
-  const years = buildYearTicks(points[0].date, points.at(-1)!.date);
-
-  function handleMove(event: React.PointerEvent<SVGSVGElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const px = clamp(((event.clientX - rect.left) / rect.width) * width, margin.left, width - margin.right);
-    const target = minDate + ((px - margin.left) / innerWidth) * (maxDate - minDate);
-    let best = points[0];
-    let bestDistance = Math.abs(dateToMs(best.date) - target);
-    for (const point of points) {
-      const distance = Math.abs(dateToMs(point.date) - target);
-      if (distance < bestDistance) {
-        best = point;
-        bestDistance = distance;
-      }
-    }
-    setHover(best);
-  }
-
-  return (
-    <section className="chart-panel europe-panel" aria-label="European gasoline price chart">
-      <div className="chart-head">
-        <div>
-          <h2>European petrol timeline</h2>
-          <p>EU average Euro-super 95 consumer price, including duties and taxes.</p>
-        </div>
-        <div className="readout">
-          <span>{formatDate(selected.date)}</span>
-          <strong>€{selected.euGasEurPerLiter.toFixed(2)}/L</strong>
-          <small>{selected.euGasWeeklyChangePct == null ? "Weekly change n/a" : `${selected.euGasWeeklyChangePct >= 0 ? "+" : ""}${selected.euGasWeeklyChangePct.toFixed(2)}% weekly`}</small>
-        </div>
-      </div>
-      <div className="chart-scroll">
-        <svg className="timeline-svg" viewBox={`0 0 ${width} ${height}`} role="img" onPointerMove={handleMove} onPointerLeave={() => setHover(null)}>
-          <rect className="plot-bg" x={margin.left} y={margin.top} width={innerWidth} height={innerHeight} rx="8" />
-          {years.map((year) => (
-            <g key={year}>
-              <line className="grid-line" x1={x(`${year}-01-01`)} x2={x(`${year}-01-01`)} y1={margin.top} y2={height - margin.bottom} />
-              <text className="axis-label" x={x(`${year}-01-01`)} y={height - 18} textAnchor="middle">
-                {year}
-              </text>
-            </g>
-          ))}
-          {[0, 0.75, 1.5, 2.25, 3].map((value) => (
-            <g key={value}>
-              <line className="grid-line horizontal" x1={margin.left} x2={width - margin.right} y1={y(value)} y2={y(value)} />
-              <text className="axis-label" x={margin.left - 12} y={y(value) + 4} textAnchor="end">
-                €{value.toFixed(2)}
-              </text>
-            </g>
-          ))}
-          <path className="europe-line" d={chartPath} />
-          <g className="hover-marker europe-hover">
-            <line x1={x(selected.date)} x2={x(selected.date)} y1={margin.top} y2={height - margin.bottom} />
-            <circle cx={x(selected.date)} cy={y(selected.euGasEurPerLiter)} r="6" />
-          </g>
-        </svg>
-      </div>
-      <div className="legend-row">
-        <span className="legend europe">EU Euro-super 95</span>
+        <span className="legend gas" title="U.S. retail gasoline price from EIA/FRED. In the 1949 view, pre-1990 values are annual EIA context; 1990 onward is weekly.">Gasoline</span>
+        <span className="legend europe" title="EU average Euro-super 95 from the European Commission, converted from EUR/liter to USD/gallon using ECB USD/EUR reference rates.">Europe</span>
+        <span className="legend market" title="NASDAQ Composite via FRED, indexed to 100 at the selected start date. It is a broad market-context line, not a gasoline price.">NASDAQ proxy</span>
+        <span className="legend recession" title="NBER U.S. recession indicator via FRED, shown as shaded periods.">NBER recession</span>
+        <span className="legend event" title="Curated event markers backed by official or institutional source links in the research view.">Verified event</span>
       </div>
     </section>
   );
@@ -456,11 +362,13 @@ function ResearchCanvas({ dataset }: { dataset: AppDataset }) {
         <article className="research-block">
           <h3>Data policy</h3>
           <p>{dataset.policy.sourceTier}. Reddit, Wikipedia, Yahoo Finance, Stooq, and unsourced summaries are blocked by the verification script.</p>
+          <p>{dataset.policy.longView}</p>
           <p>{dataset.policy.marketOverlay}</p>
           <p>{dataset.policy.europeOverlay}</p>
         </article>
         <article className="research-block">
           <h3>Dataset status</h3>
+          <p>{dataset.metrics.annualObservations.toLocaleString()} annual U.S. observations beginning {formatYear(dataset.metrics.longFirstDate)}.</p>
           <p>{dataset.metrics.weeklyObservations.toLocaleString()} weekly observations from {formatDate(dataset.metrics.firstDate)} through {formatDate(dataset.metrics.lastDate)}.</p>
           <p>{dataset.metrics.europeanObservations.toLocaleString()} European observations from {formatDate(dataset.metrics.europeFirstDate)} through {formatDate(dataset.metrics.europeLastDate)}.</p>
           <p>Weekly gas/market change correlation: {dataset.metrics.gasMarketWeeklyChangeCorrelation ?? "n/a"}.</p>
@@ -495,7 +403,7 @@ function SourceNote({ dataset }: { dataset: AppDataset }) {
     <section className="source-note">
       <CheckCircle2 aria-hidden="true" />
       <p>
-        Data generated {formatDate(dataset.generatedAt.slice(0, 10))}. Gasoline: EIA via FRED. Europe: European Commission Weekly Oil Bulletin. Market proxy: Nasdaq Composite via FRED.
+        Data generated {formatDate(dataset.generatedAt.slice(0, 10))}. Gasoline: EIA via FRED and EIA MER Table 9.4. Europe: European Commission plus ECB conversion. Market proxy: Nasdaq Composite via FRED.
         DJIA is cited for context where official licensing allows, but the long raw Dow series is not redistributed.
       </p>
     </section>
@@ -536,11 +444,49 @@ function ModeButton({ active, icon, label, onClick }: { active: boolean; icon: R
 }
 
 function buildYearTicks(start: string, end: string) {
-  const startYear = Math.ceil(formatYear(start) / 5) * 5;
+  const span = formatYear(end) - formatYear(start);
+  const interval = span > 45 ? 10 : 5;
+  const startYear = Math.ceil(formatYear(start) / interval) * interval;
   const endYear = formatYear(end);
   const years: number[] = [];
-  for (let year = startYear; year <= endYear; year += 5) years.push(year);
+  for (let year = startYear; year <= endYear; year += interval) years.push(year);
   return years;
+}
+
+function buildMoneyTicks(maxValue: number) {
+  const step = maxValue > 10 ? 5 : 2.5;
+  const ticks = [];
+  for (let value = 0; value <= maxValue + 0.001; value += step) ticks.push(value);
+  if (ticks.at(-1) !== maxValue) ticks.push(maxValue);
+  return ticks;
+}
+
+function nearestChartPoint(points: ChartPoint[], targetMs: number) {
+  let best = points[0];
+  let bestDistance = Math.abs(dateToMs(best.date) - targetMs);
+  for (const point of points) {
+    const distance = Math.abs(dateToMs(point.date) - targetMs);
+    if (distance < bestDistance) {
+      best = point;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function nearestEuropePoint(points: EuropeSeriesPoint[], targetDate: string) {
+  if (!points.length) return null;
+  const target = dateToMs(targetDate);
+  let best = points[0];
+  let bestDistance = Math.abs(dateToMs(best.date) - target);
+  for (const point of points) {
+    const distance = Math.abs(dateToMs(point.date) - target);
+    if (distance < bestDistance) {
+      best = point;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 function maxDateString(left: string, right: string) {

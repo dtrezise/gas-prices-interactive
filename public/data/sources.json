@@ -1,11 +1,17 @@
 {
-  "generatedAt": "2026-05-12T17:46:07.953Z",
+  "generatedAt": "2026-05-12T18:28:46.078Z",
   "sources": [
     {
       "id": "gasregw",
       "label": "US Regular All Formulations Gas Price",
       "publisher": "U.S. Energy Information Administration via FRED",
       "url": "https://fred.stlouisfed.org/series/GASREGW"
+    },
+    {
+      "id": "eia-t0904",
+      "label": "U.S. annual retail gasoline prices",
+      "publisher": "U.S. Energy Information Administration Monthly Energy Review Table 9.4",
+      "url": "https://www.eia.gov/totalenergy/data/browser/index.php?tbl=T09.04"
     },
     {
       "id": "nasdaqcom",
@@ -26,6 +32,12 @@
       "url": "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en"
     },
     {
+      "id": "ecb-eurofxref",
+      "label": "EUR/USD reference exchange rates",
+      "publisher": "European Central Bank",
+      "url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html"
+    },
+    {
       "id": "djia-context",
       "label": "Dow Jones Industrial Average context",
       "publisher": "S&P Dow Jones Indices / FRED",
@@ -33,6 +45,77 @@
     }
   ],
   "eventSources": [
+    {
+      "id": "suez-crisis",
+      "date": "1956-10-29",
+      "title": "Suez Crisis disrupts oil transit",
+      "category": "supply",
+      "impact": "transit-risk",
+      "confidence": "medium",
+      "summary": "The Suez Crisis is widely identified as a postwar oil shock tied to Middle East conflict and transit disruption.",
+      "whyIncluded": "Adds Cold War-era context before modern weekly gasoline data begins.",
+      "sources": [
+        "https://www.nber.org/papers/w16790",
+        "https://www.eia.gov/energyexplained/oil-and-petroleum-products/prices-and-outlook.php"
+      ]
+    },
+    {
+      "id": "opec-founded",
+      "date": "1960-09-14",
+      "title": "OPEC is founded",
+      "category": "opec",
+      "impact": "producer-coordination",
+      "confidence": "high",
+      "summary": "OPEC was created by Iran, Iraq, Kuwait, Saudi Arabia, and Venezuela to coordinate petroleum policies.",
+      "whyIncluded": "OPEC later became a central institution in global crude oil supply and pricing dynamics.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=56420&os=iosno_journeys%3Dtrue",
+        "https://www.opec.org/brief-history.html"
+      ]
+    },
+    {
+      "id": "arab-oil-embargo",
+      "date": "1973-10-19",
+      "title": "Arab oil embargo begins",
+      "category": "opec",
+      "impact": "supply-cut",
+      "confidence": "high",
+      "summary": "Arab oil producers imposed an embargo and production cuts that sharply increased world oil prices.",
+      "whyIncluded": "One of the defining oil shocks of the Cold War era and a major gasoline-price inflection point.",
+      "sources": [
+        "https://www.federalreservehistory.org/ESSAYS/OIL-SHOCK-OF-1973-74",
+        "https://history.state.gov/milestones/1969-1976/oil-embargo",
+        "https://www.eia.gov/energyexplained/oil-and-petroleum-products/prices-and-outlook.php"
+      ]
+    },
+    {
+      "id": "iranian-revolution-oil-shock",
+      "date": "1979-01-16",
+      "title": "Iranian Revolution oil shock",
+      "category": "war",
+      "impact": "supply-disruption",
+      "confidence": "high",
+      "summary": "Iranian oil output fell sharply during the revolution, contributing to the second major oil shock of the 1970s.",
+      "whyIncluded": "Explains the late-1970s gasoline-price jump visible in annual data.",
+      "sources": [
+        "https://www.federalreservehistory.org/essays/oil_shock_of_1978_79",
+        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+      ]
+    },
+    {
+      "id": "iran-iraq-war",
+      "date": "1980-09-22",
+      "title": "Iran-Iraq War begins",
+      "category": "war",
+      "impact": "geopolitical-risk",
+      "confidence": "medium",
+      "summary": "The Iran-Iraq War followed the Iranian Revolution and is identified in historical oil-shock literature as a major postwar oil-market event.",
+      "whyIncluded": "Adds regional-war context for the early-1980s energy-price environment.",
+      "sources": [
+        "https://www.nber.org/papers/w16790",
+        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+      ]
+    },
     {
       "id": "gulf-war-supply-shock",
       "date": "1990-08-02",

@@ -9,6 +9,7 @@ const root = new URL("..", import.meta.url);
 const dataDir = new URL("data/", root);
 const publicDataDir = new URL("public/data/", root);
 const startDate = "1990-01-01";
+const longStartDate = "1949-01-01";
 const execFileAsync = promisify(execFile);
 
 const fred = {
@@ -17,6 +18,8 @@ const fred = {
   recessions: "https://fred.stlouisfed.org/graph/fredgraph.csv?id=USREC",
 };
 
+const eiaAnnualGasoline = "https://www.eia.gov/totalenergy/data/browser/csv.php?tbl=T09.04";
+const ecbEuroUsd = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip";
 const europeanCommissionOilBulletin =
   "https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx";
 
@@ -76,6 +79,21 @@ async function extractEuropeRows() {
   }
 }
 
+async function extractEcbUsdRows() {
+  const zipPath = join(tmpdir(), `ecb-eurofxref-${Date.now()}.zip`);
+  const zipFile = Buffer.from(await fetchArrayBuffer(ecbEuroUsd));
+  await writeFile(zipPath, zipFile);
+  try {
+    const scriptPath = new URL("extract-ecb-usd.py", import.meta.url).pathname;
+    const { stdout } = await execFileAsync(process.env.PYTHON ?? "python3", [scriptPath, zipPath], {
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return JSON.parse(stdout);
+  } finally {
+    await rm(zipPath, { force: true });
+  }
+}
+
 async function existingDataset() {
   try {
     return JSON.parse(await readFile(new URL("series.json", publicDataDir), "utf8"));
@@ -107,6 +125,51 @@ function enrichGasWithMarket(gasRows, marketRows) {
       marketIndex: market ? round(market.value, 2) : null,
       marketNormalized: market && firstMarket ? round((market.value / firstMarket.value) * 100, 2) : null,
       marketWeeklyChangePct: market && marketPrevious ? round(pctChange(market.value, marketPrevious.value), 2) : null,
+    };
+  });
+}
+
+function annualGasolineSeries(rows) {
+  const usableCodes = new Map([
+    ["RLUCUUS", { label: "Leaded regular gasoline, U.S. city average", priority: 1 }],
+    ["RUUCUUS", { label: "Unleaded regular gasoline, U.S. city average", priority: 2 }],
+  ]);
+  const byYear = new Map();
+  for (const row of rows) {
+    if (!row.YYYYMM?.endsWith("13") || !usableCodes.has(row.MSN)) continue;
+    const value = toNumber(row.Value);
+    if (value === null) continue;
+    const year = row.YYYYMM.slice(0, 4);
+    const meta = usableCodes.get(row.MSN);
+    const existing = byYear.get(year);
+    if (!existing || meta.priority > existing.priority) {
+      byYear.set(year, {
+        date: `${year}-07-01`,
+        year: Number(year),
+        gasPrice: round(value, 3),
+        cadence: "annual",
+        sourceSeries: row.MSN,
+        sourceLabel: meta.label,
+        priority: meta.priority,
+      });
+    }
+  }
+
+  return [...byYear.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(({ priority, ...row }) => row);
+}
+
+function enrichEuropeSeries(europeRows, ecbRows) {
+  return europeRows.map((row, index) => {
+    const exchange = nearestPriorValue(ecbRows, row.date);
+    const previous = index > 0 ? europeRows[index - 1] : null;
+    const euGasUsdPerGallon = exchange ? row.euGasEurPerLiter * exchange.usdPerEur * 3.785411784 : null;
+    return {
+      ...row,
+      usdPerEur: exchange ? round(exchange.usdPerEur, 4) : null,
+      euGasUsdPerGallon: euGasUsdPerGallon ? round(euGasUsdPerGallon, 2) : null,
+      euGasWeeklyChangePct: previous ? round(pctChange(row.euGasEurPerLiter, previous.euGasEurPerLiter), 2) : null,
     };
   });
 }
@@ -161,7 +224,19 @@ async function main() {
     existing?.recessionMonthly,
     "recession",
   );
+  const annualRows = await fetchCsvOrFallback(
+    eiaAnnualGasoline,
+    existing?.annualSeries?.map((point) => ({
+      MSN: point.sourceSeries,
+      YYYYMM: `${point.year}13`,
+      Value: String(point.gasPrice),
+      Description: point.sourceLabel,
+      Unit: "Dollars per Gallon Including Taxes",
+    })),
+    "annual gasoline",
+  );
   const europeRows = await extractEuropeRows();
+  const ecbRows = await extractEcbUsdRows();
   const [eventsRaw, presidentsRaw] = await Promise.all([
     readFile(new URL("events.json", dataDir), "utf8").then(JSON.parse),
     readFile(new URL("presidents.json", dataDir), "utf8").then(JSON.parse),
@@ -170,21 +245,20 @@ async function main() {
   const gas = cleanFredSeries(gasRows, "GASREGW");
   const market = cleanFredSeries(marketRows, "NASDAQCOM");
   const recessionMonthly = cleanFredSeries(recessionRows, "USREC");
+  const annualSeries = annualGasolineSeries(annualRows);
   const europe = europeRows.filter((row) => row.date >= startDate && row.euGasEurPerLiter !== null);
-  const europeSeries = europe.map((row, index) => ({
-    ...row,
-    euGasWeeklyChangePct: index > 0 ? round(pctChange(row.euGasEurPerLiter, europe[index - 1].euGasEurPerLiter), 2) : null,
-  }));
+  const europeSeries = enrichEuropeSeries(europe, ecbRows).filter((row) => row.euGasUsdPerGallon !== null);
   const points = enrichGasWithMarket(gas, market);
-  const events = eventsRaw.filter((event) => event.date >= startDate).sort((a, b) => a.date.localeCompare(b.date));
-  const presidents = presidentsRaw.filter((president) => president.end >= startDate);
+  const events = eventsRaw.filter((event) => event.date >= longStartDate).sort((a, b) => a.date.localeCompare(b.date));
+  const presidents = presidentsRaw.filter((president) => president.end >= longStartDate);
 
   const dataset = {
     generatedAt: new Date().toISOString(),
     policy: {
       sourceTier: "strict official",
       marketOverlay: "NASDAQ Composite via FRED is used as the long market-index proxy. DJIA is cited for context but not redistributed as a long raw series because of source copyright restrictions.",
-      europeOverlay: "European Commission Weekly Oil Bulletin EU average Euro-super 95 prices are shown in the source workbook's native unit, EUR/liter.",
+      longView: "U.S. gasoline before 1990 is annual EIA historical context. From 1990 forward, the chart uses weekly EIA/FRED observations.",
+      europeOverlay: "European Commission Weekly Oil Bulletin EU average Euro-super 95 prices are converted from EUR/liter to USD/gallon using European Central Bank USD per EUR reference rates.",
       noReddit: true,
     },
     sources: [
@@ -193,6 +267,12 @@ async function main() {
         label: "US Regular All Formulations Gas Price",
         publisher: "U.S. Energy Information Administration via FRED",
         url: "https://fred.stlouisfed.org/series/GASREGW",
+      },
+      {
+        id: "eia-t0904",
+        label: "U.S. annual retail gasoline prices",
+        publisher: "U.S. Energy Information Administration Monthly Energy Review Table 9.4",
+        url: "https://www.eia.gov/totalenergy/data/browser/index.php?tbl=T09.04",
       },
       {
         id: "nasdaqcom",
@@ -213,6 +293,12 @@ async function main() {
         url: "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en",
       },
       {
+        id: "ecb-eurofxref",
+        label: "EUR/USD reference exchange rates",
+        publisher: "European Central Bank",
+        url: "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html",
+      },
+      {
         id: "djia-context",
         label: "Dow Jones Industrial Average context",
         publisher: "S&P Dow Jones Indices / FRED",
@@ -221,7 +307,9 @@ async function main() {
     ],
     metrics: {
       weeklyObservations: points.length,
+      annualObservations: annualSeries.length,
       europeanObservations: europeSeries.length,
+      longFirstDate: annualSeries[0]?.date,
       firstDate: points[0]?.date,
       lastDate: points.at(-1)?.date,
       europeFirstDate: europeSeries[0]?.date,
@@ -229,6 +317,7 @@ async function main() {
       gasMarketWeeklyChangeCorrelation: round(pearsonCorrelation(points, "gasWeeklyChangePct", "marketWeeklyChangePct"), 3),
     },
     series: points,
+    annualSeries,
     europeSeries,
     recessionMonthly,
     recessions: buildRecessionSpans(recessionMonthly),
@@ -244,6 +333,7 @@ async function main() {
   );
 
   console.log(`Wrote ${points.length} weekly observations through ${dataset.metrics.lastDate}`);
+  console.log(`Wrote ${annualSeries.length} annual observations from ${dataset.metrics.longFirstDate}`);
   console.log(`Wrote ${europeSeries.length} EU weekly observations through ${dataset.metrics.europeLastDate}`);
   console.log(`Gas/market weekly change correlation: ${dataset.metrics.gasMarketWeeklyChangeCorrelation}`);
 }

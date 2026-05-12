@@ -1,4 +1,12 @@
 [
+  { "name": "Harry S. Truman", "party": "Democratic", "start": "1945-04-12", "end": "1953-01-20" },
+  { "name": "Dwight D. Eisenhower", "party": "Republican", "start": "1953-01-20", "end": "1961-01-20" },
+  { "name": "John F. Kennedy", "party": "Democratic", "start": "1961-01-20", "end": "1963-11-22" },
+  { "name": "Lyndon B. Johnson", "party": "Democratic", "start": "1963-11-22", "end": "1969-01-20" },
+  { "name": "Richard Nixon", "party": "Republican", "start": "1969-01-20", "end": "1974-08-09" },
+  { "name": "Gerald Ford", "party": "Republican", "start": "1974-08-09", "end": "1977-01-20" },
+  { "name": "Jimmy Carter", "party": "Democratic", "start": "1977-01-20", "end": "1981-01-20" },
+  { "name": "Ronald Reagan", "party": "Republican", "start": "1981-01-20", "end": "1989-01-20" },
   { "name": "George H. W. Bush", "party": "Republican", "start": "1989-01-20", "end": "1993-01-20" },
   { "name": "Bill Clinton", "party": "Democratic", "start": "1993-01-20", "end": "2001-01-20" },
   { "name": "George W. Bush", "party": "Republican", "start": "2001-01-20", "end": "2009-01-20" },
