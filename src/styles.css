@@ -8,6 +8,7 @@
   --surface-strong: #eef3f6;
   --gas: #0b6b8f;
   --market: #6f8f2b;
+  --europe: #8a4f9c;
   --event: #b66a1d;
   --recession: #87919e;
   --democrat: #2f6db5;
@@ -328,7 +329,8 @@ h3 {
 }
 
 .gas-line,
-.market-line {
+.market-line,
+.europe-line {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -343,6 +345,11 @@ h3 {
   stroke: var(--market);
   stroke-width: 2.5;
   opacity: 0.84;
+}
+
+.europe-line {
+  stroke: var(--europe);
+  stroke-width: 4;
 }
 
 .recession-span {
@@ -379,6 +386,21 @@ h3 {
   fill: var(--event);
   stroke: #fff;
   stroke-width: 2;
+}
+
+.event-title-tooltip {
+  pointer-events: none;
+}
+
+.event-title-tooltip rect {
+  fill: rgba(24, 32, 42, 0.92);
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+.event-title-tooltip text {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .event-marker.war circle {
@@ -446,6 +468,10 @@ h3 {
   color: var(--event);
 }
 
+.legend.europe {
+  color: var(--europe);
+}
+
 .source-note {
   margin-top: 14px;
   padding: 14px 16px;
@@ -458,6 +484,19 @@ h3 {
 .source-note p {
   margin: 0;
   color: #2d634b;
+}
+
+.europe-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.europe-summary strong {
+  color: var(--europe);
+  font-size: 1.25rem;
 }
 
 .list-view,

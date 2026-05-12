@@ -11,6 +11,12 @@ export interface SeriesPoint {
   marketWeeklyChangePct: number | null;
 }
 
+export interface EuropeSeriesPoint {
+  date: string;
+  euGasEurPerLiter: number;
+  euGasWeeklyChangePct: number | null;
+}
+
 export interface EventMarker {
   id: string;
   date: string;
@@ -58,16 +64,21 @@ export interface AppDataset {
   policy: {
     sourceTier: string;
     marketOverlay: string;
+    europeOverlay: string;
     noReddit: boolean;
   };
   sources: DataSource[];
   metrics: {
     weeklyObservations: number;
+    europeanObservations: number;
     firstDate: string;
     lastDate: string;
+    europeFirstDate: string;
+    europeLastDate: string;
     gasMarketWeeklyChangeCorrelation: number | null;
   };
   series: SeriesPoint[];
+  europeSeries: EuropeSeriesPoint[];
   recessions: RecessionSpan[];
   presidents: PresidentTerm[];
   administrations: AdministrationSummary[];
@@ -75,4 +86,4 @@ export interface AppDataset {
 }
 
 export type OverlayKey = "market" | "presidents" | "events" | "recessions";
-export type ViewMode = "timeline" | "events" | "administrations" | "research";
+export type ViewMode = "timeline" | "europe" | "events" | "administrations" | "research";

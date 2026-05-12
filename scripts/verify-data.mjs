@@ -26,12 +26,20 @@ async function main() {
 
   assert(dataset.policy?.noReddit === true, "Dataset must explicitly enforce no-Reddit policy.");
   assert(Array.isArray(dataset.series) && dataset.series.length > 1500, "Expected long weekly gas-price series.");
+  assert(Array.isArray(dataset.europeSeries) && dataset.metrics.europeanObservations > 1000, "Expected European Commission weekly petrol series.");
+  assert(dataset.metrics.europeFirstDate >= "2005-01-01", "European series starts before approved source scope.");
   assert(dataset.metrics.firstDate >= "1990-01-01", "Series starts before approved scope.");
   assert(dataset.metrics.lastDate <= new Date().toISOString().slice(0, 10), "Series contains future-dated observations.");
 
   for (const point of dataset.series) {
     assert(/^\d{4}-\d{2}-\d{2}$/.test(point.date), `Bad series date: ${point.date}`);
     assert(Number.isFinite(point.gasPrice), `Missing gas price for ${point.date}`);
+  }
+
+  for (const point of dataset.europeSeries) {
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(point.date), `Bad EU series date: ${point.date}`);
+    assert(Number.isFinite(point.euGasEurPerLiter), `Bad EU price for ${point.date}`);
+    assert(point.euGasEurPerLiter > 0 && point.euGasEurPerLiter < 4, `EU price out of expected range for ${point.date}`);
   }
 
   for (const source of dataset.sources) {
