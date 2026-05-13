@@ -132,9 +132,6 @@ function App() {
             </div>
             <div className="toggle-row">
               <Filter aria-hidden="true" />
-              <button className={`price-mode-button ${priceMode === "real" ? "active" : ""}`} onClick={() => setPriceMode((current) => (current === "actual" ? "real" : "actual"))}>
-                {priceMode === "actual" ? "Adjusted for inflation" : "Actual prices"}
-              </button>
               {overlays.map((overlay) => (
                 <label key={overlay.key} className="toggle">
                   <input
@@ -146,24 +143,10 @@ function App() {
                 </label>
               ))}
             </div>
-            <div className="stock-toggle-row" aria-label="Oil company stock overlays">
-              <span>Oil stocks</span>
-              {dataset.oilStockSeries.map((company) => (
-                <button
-                  key={company.symbol}
-                  className={activeStocks[company.symbol] ? "stock-toggle active" : "stock-toggle"}
-                  style={{ "--stock-color": company.color } as React.CSSProperties}
-                  onClick={() => setActiveStocks((current) => ({ ...current, [company.symbol]: !current[company.symbol] }))}
-                  title={`${company.name} price performance from Nasdaq, indexed to 100 in the stock panel`}
-                >
-                  {company.symbol}
-                </button>
-              ))}
-            </div>
           </section>
 
-          <TimelineChart dataset={dataset} points={points} overlays={activeOverlays} priceMode={priceMode} />
-          <OilStocksPanel dataset={dataset} activeStocks={activeStocks} startDate={startDate} />
+          <TimelineChart dataset={dataset} points={points} overlays={activeOverlays} priceMode={priceMode} onTogglePriceMode={() => setPriceMode((current) => (current === "actual" ? "real" : "actual"))} />
+          <OilStocksPanel dataset={dataset} activeStocks={activeStocks} setActiveStocks={setActiveStocks} startDate={startDate} />
           <SourceNote dataset={dataset} />
         </>
       )}
@@ -180,11 +163,13 @@ function TimelineChart({
   points,
   overlays: activeOverlays,
   priceMode,
+  onTogglePriceMode,
 }: {
   dataset: AppDataset;
   points: ChartPoint[];
   overlays: Record<OverlayKey, boolean>;
   priceMode: PriceMode;
+  onTogglePriceMode: () => void;
 }) {
   const [hover, setHover] = useState<ChartPoint | null>(null);
   const [hoveredEvent, setHoveredEvent] = useState<EventMarker | null>(null);
@@ -246,8 +231,12 @@ function TimelineChart({
           <em>{priceMode === "real" ? `U.S. CPI adjusted to ${dataset.metrics.cpiBaseDate.slice(0, 7)} dollars` : "Actual pump prices"}</em>
         </div>
       </div>
-      <div className="chart-scroll">
-      <svg className="timeline-svg" viewBox={`0 0 ${width} ${height}`} role="img" onPointerMove={handleMove} onPointerLeave={() => { setHover(null); setHoveredEvent(null); }}>
+      <div className="chart-viewport">
+        <button className={`price-mode-button floating ${priceMode === "real" ? "active" : ""}`} onClick={onTogglePriceMode}>
+          {priceMode === "real" ? "Adjusted for Inflation" : "Actual Prices"}
+        </button>
+        <div className="chart-scroll">
+        <svg className="timeline-svg" viewBox={`0 0 ${width} ${height}`} role="img" onPointerMove={handleMove} onPointerLeave={() => { setHover(null); setHoveredEvent(null); }}>
         <rect className="plot-bg" x={margin.left} y={margin.top} width={innerWidth} height={innerHeight} rx="8" />
 
         {years.map((year) => (
@@ -336,7 +325,8 @@ function TimelineChart({
           <line x1={x(selected.date)} x2={x(selected.date)} y1={margin.top} y2={height - margin.bottom} />
           <circle cx={x(selected.date)} cy={yGas(selectedGas)} r="6" />
         </g>
-      </svg>
+        </svg>
+        </div>
       </div>
       <div className="legend-row">
         <span className="legend gas" tabIndex={0} data-tooltip="U.S. retail gasoline price from EIA/FRED. Pre-1990 values are annual EIA context; 1990 onward is weekly.">Gasoline</span>
@@ -349,13 +339,21 @@ function TimelineChart({
   );
 }
 
-function OilStocksPanel({ dataset, activeStocks, startDate }: { dataset: AppDataset; activeStocks: Record<string, boolean>; startDate: string }) {
+function OilStocksPanel({
+  dataset,
+  activeStocks,
+  setActiveStocks,
+  startDate,
+}: {
+  dataset: AppDataset;
+  activeStocks: Record<string, boolean>;
+  setActiveStocks: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  startDate: string;
+}) {
   const selected = dataset.oilStockSeries
     .filter((series) => activeStocks[series.symbol])
     .map((series) => normalizeStockSeries(series, startDate))
     .filter((series) => series.points.length > 1);
-
-  if (!selected.length) return null;
 
   const width = 1180;
   const height = 320;
@@ -363,10 +361,11 @@ function OilStocksPanel({ dataset, activeStocks, startDate }: { dataset: AppData
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
   const allPoints = selected.flatMap((series) => series.points);
-  const [minDate, maxDate] = extent(allPoints.map((point) => dateToMs(point.date)));
+  const hasSelectedStocks = allPoints.length > 1;
+  const [minDate, maxDate] = hasSelectedStocks ? extent(allPoints.map((point) => dateToMs(point.date))) : [dateToMs("2005-01-01"), dateToMs(dataset.metrics.lastDate)];
   const minDateLabel = new Date(minDate).toISOString().slice(0, 10);
   const maxDateLabel = new Date(maxDate).toISOString().slice(0, 10);
-  const [rawMinIndex, rawMaxIndex] = extent(allPoints.map((point) => point.index));
+  const [rawMinIndex, rawMaxIndex] = hasSelectedStocks ? extent(allPoints.map((point) => point.index)) : [75, 125];
   const minIndex = Math.max(0, Math.floor((rawMinIndex * 0.94) / 25) * 25);
   const maxIndex = Math.ceil((rawMaxIndex * 1.06) / 25) * 25;
   const x = (date: string) => margin.left + ((dateToMs(date) - minDate) / (maxDate - minDate)) * innerWidth;
@@ -380,6 +379,20 @@ function OilStocksPanel({ dataset, activeStocks, startDate }: { dataset: AppData
         <div>
           <h2>Oil company stock performance</h2>
           <p>Monthly Nasdaq close prices indexed to 100 at each selected company&apos;s first visible observation. Price performance only; dividends are not included.</p>
+        </div>
+        <div className="stock-toggle-row" aria-label="Oil company stock overlays">
+          {dataset.oilStockSeries.map((company) => (
+            <button
+              key={company.symbol}
+              className={activeStocks[company.symbol] ? "stock-toggle active" : "stock-toggle"}
+              data-tooltip={company.name}
+              style={{ "--stock-color": company.color } as React.CSSProperties}
+              onClick={() => setActiveStocks((current) => ({ ...current, [company.symbol]: !current[company.symbol] }))}
+              aria-label={`${company.name} stock performance`}
+            >
+              {company.symbol}
+            </button>
+          ))}
         </div>
       </div>
       <div className="chart-scroll">
@@ -401,18 +414,18 @@ function OilStocksPanel({ dataset, activeStocks, startDate }: { dataset: AppData
               </text>
             </g>
           ))}
-          {selected.map((series) => (
+          {hasSelectedStocks && selected.map((series) => (
             <path key={series.symbol} className="stock-line" d={pathFromPoints(series.points, (point) => x(point.date), (point) => y(point.index))} style={{ stroke: series.color }} />
           ))}
         </svg>
       </div>
-      <div className="stock-legend">
+      {hasSelectedStocks && <div className="stock-legend">
         {selected.map((series) => (
           <span key={series.symbol} style={{ "--stock-color": series.color } as React.CSSProperties}>
             <strong>{series.symbol}</strong> {series.name}
           </span>
         ))}
-      </div>
+      </div>}
     </section>
   );
 }
