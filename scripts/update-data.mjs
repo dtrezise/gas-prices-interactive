@@ -16,12 +16,23 @@ const fred = {
   gas: "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GASREGW",
   nasdaq: "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQCOM",
   recessions: "https://fred.stlouisfed.org/graph/fredgraph.csv?id=USREC",
+  cpi: "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL",
 };
 
 const eiaAnnualGasoline = "https://www.eia.gov/totalenergy/data/browser/csv.php?tbl=T09.04";
 const ecbEuroUsd = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip";
 const europeanCommissionOilBulletin =
   "https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx";
+
+const oilCompanies = [
+  { symbol: "XOM", name: "Exxon Mobil", color: "#0b6b8f" },
+  { symbol: "CVX", name: "Chevron", color: "#8a4f9c" },
+  { symbol: "SHEL", name: "Shell", color: "#b66a1d" },
+  { symbol: "BP", name: "BP", color: "#5f7f2b" },
+  { symbol: "TTE", name: "TotalEnergies", color: "#2f6db5" },
+  { symbol: "COP", name: "ConocoPhillips", color: "#a33b3b" },
+  { symbol: "OXY", name: "Occidental", color: "#7154a6" },
+];
 
 async function fetchCsv(url) {
   const response = await fetchWithRetry(url);
@@ -54,13 +65,13 @@ async function fetchWithRetry(url, attempts = 3) {
   return lastResponse;
 }
 
-function cleanFredSeries(rows, valueKey) {
+function cleanFredSeries(rows, valueKey, minimumDate = startDate) {
   return rows
     .map((row) => ({
       date: row.observation_date,
       value: toNumber(row[valueKey]),
     }))
-    .filter((row) => row.date >= startDate && row.value !== null)
+    .filter((row) => row.date >= minimumDate && row.value !== null)
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -94,6 +105,52 @@ async function extractEcbUsdRows() {
   }
 }
 
+async function fetchOilCompanySeries(existingSeries = []) {
+  const bySymbol = new Map(existingSeries.map((company) => [company.symbol, company]));
+  const results = [];
+  for (const company of oilCompanies) {
+    const fallback = bySymbol.get(company.symbol);
+    try {
+      const url = `https://api.nasdaq.com/api/quote/${company.symbol}/chart?assetclass=stocks&charttype=rs&fromdate=2005-01-01&todate=${new Date().toISOString().slice(0, 10)}`;
+      const response = await fetchWithRetry(url);
+      if (!response.ok) throw new Error(`Nasdaq returned ${response.status}`);
+      const payload = await response.json();
+      const chart = payload.data?.chart;
+      if (!Array.isArray(chart) || chart.length < 1000) throw new Error("Nasdaq chart payload was incomplete");
+      results.push({
+        ...company,
+        name: company.name,
+        sourceName: payload.data?.company ?? company.name,
+        sourceUrl: `https://www.nasdaq.com/market-activity/stocks/${company.symbol.toLowerCase()}/historical`,
+        points: monthlyStockPoints(chart),
+      });
+    } catch (error) {
+      if (!fallback) throw error;
+      console.warn(`Using committed ${company.symbol} fallback because live fetch failed: ${error.message}`);
+      results.push(fallback);
+    }
+  }
+  return results;
+}
+
+function monthlyStockPoints(chart) {
+  const byMonth = new Map();
+  for (const point of chart) {
+    const date = parseNasdaqDate(point.z?.dateTime);
+    const close = toNumber(point.z?.close ?? point.z?.value ?? point.y);
+    if (!date || close === null) continue;
+    byMonth.set(date.slice(0, 7), { date, close: round(close, 2) });
+  }
+  return [...byMonth.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function parseNasdaqDate(value) {
+  if (!value) return null;
+  const [month, day, year] = value.split("/").map(Number);
+  if (!month || !day || !year) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 async function existingDataset() {
   try {
     return JSON.parse(await readFile(new URL("series.json", publicDataDir), "utf8"));
@@ -112,7 +169,7 @@ async function fetchCsvOrFallback(url, fallbackRows, label) {
   }
 }
 
-function enrichGasWithMarket(gasRows, marketRows) {
+function enrichGasWithMarket(gasRows, marketRows, cpiRows, baseCpi) {
   const firstMarket = nearestPriorValue(marketRows, gasRows[0].date);
   return gasRows.map((gas, index) => {
     const market = nearestPriorValue(marketRows, gas.date);
@@ -121,6 +178,7 @@ function enrichGasWithMarket(gasRows, marketRows) {
     return {
       date: gas.date,
       gasPrice: round(gas.value, 3),
+      gasPriceReal: round(inflationAdjust(gas.value, gas.date, cpiRows, baseCpi), 3),
       gasWeeklyChangePct: previous ? round(pctChange(gas.value, previous.value), 2) : null,
       marketIndex: market ? round(market.value, 2) : null,
       marketNormalized: market && firstMarket ? round((market.value / firstMarket.value) * 100, 2) : null,
@@ -160,7 +218,14 @@ function annualGasolineSeries(rows) {
     .map(({ priority, ...row }) => row);
 }
 
-function enrichEuropeSeries(europeRows, ecbRows) {
+function enrichAnnualSeries(rows, cpiRows, baseCpi) {
+  return annualGasolineSeries(rows).map((row) => ({
+    ...row,
+    gasPriceReal: round(inflationAdjust(row.gasPrice, row.date, cpiRows, baseCpi), 3),
+  }));
+}
+
+function enrichEuropeSeries(europeRows, ecbRows, cpiRows, baseCpi) {
   return europeRows.map((row, index) => {
     const exchange = nearestPriorValue(ecbRows, row.date);
     const previous = index > 0 ? europeRows[index - 1] : null;
@@ -169,9 +234,15 @@ function enrichEuropeSeries(europeRows, ecbRows) {
       ...row,
       usdPerEur: exchange ? round(exchange.usdPerEur, 4) : null,
       euGasUsdPerGallon: euGasUsdPerGallon ? round(euGasUsdPerGallon, 2) : null,
+      euGasUsdPerGallonReal: euGasUsdPerGallon ? round(inflationAdjust(euGasUsdPerGallon, row.date, cpiRows, baseCpi), 2) : null,
       euGasWeeklyChangePct: previous ? round(pctChange(row.euGasEurPerLiter, previous.euGasEurPerLiter), 2) : null,
     };
   });
+}
+
+function inflationAdjust(value, date, cpiRows, baseCpi) {
+  const cpi = nearestPriorValue(cpiRows, date);
+  return cpi ? value * (baseCpi.value / cpi.value) : value;
 }
 
 function round(value, places) {
@@ -235,8 +306,14 @@ async function main() {
     })),
     "annual gasoline",
   );
+  const cpiRowsRaw = await fetchCsvOrFallback(
+    fred.cpi,
+    existing?.cpiMonthly?.map((point) => ({ observation_date: point.date, CPIAUCSL: String(point.value) })),
+    "CPI",
+  );
   const europeRows = await extractEuropeRows();
   const ecbRows = await extractEcbUsdRows();
+  const oilStockSeries = await fetchOilCompanySeries(existing?.oilStockSeries);
   const [eventsRaw, presidentsRaw] = await Promise.all([
     readFile(new URL("events.json", dataDir), "utf8").then(JSON.parse),
     readFile(new URL("presidents.json", dataDir), "utf8").then(JSON.parse),
@@ -245,10 +322,16 @@ async function main() {
   const gas = cleanFredSeries(gasRows, "GASREGW");
   const market = cleanFredSeries(marketRows, "NASDAQCOM");
   const recessionMonthly = cleanFredSeries(recessionRows, "USREC");
-  const annualSeries = annualGasolineSeries(annualRows);
+  const cpiMonthly = cleanFredSeries(cpiRowsRaw, "CPIAUCSL", longStartDate);
+  const baseCpi = cpiMonthly.at(-1);
+  const annualSeries = enrichAnnualSeries(annualRows, cpiMonthly, baseCpi);
   const europe = europeRows.filter((row) => row.date >= startDate && row.euGasEurPerLiter !== null);
-  const europeSeries = enrichEuropeSeries(europe, ecbRows).filter((row) => row.euGasUsdPerGallon !== null);
-  const points = enrichGasWithMarket(gas, market);
+  const europeSeries = enrichEuropeSeries(europe, ecbRows, cpiMonthly, baseCpi).filter((row) => row.euGasUsdPerGallon !== null);
+  const points = enrichGasWithMarket(gas, market, cpiMonthly, baseCpi);
+  const administrationPoints = [
+    ...annualSeries.filter((point) => point.date < points[0].date),
+    ...points,
+  ];
   const events = eventsRaw.filter((event) => event.date >= longStartDate).sort((a, b) => a.date.localeCompare(b.date));
   const presidents = presidentsRaw.filter((president) => president.end >= longStartDate);
 
@@ -259,6 +342,8 @@ async function main() {
       marketOverlay: "NASDAQ Composite via FRED is used as the long market-index proxy. DJIA is cited for context but not redistributed as a long raw series because of source copyright restrictions.",
       longView: "U.S. gasoline before 1990 is annual EIA historical context. From 1990 forward, the chart uses weekly EIA/FRED observations.",
       europeOverlay: "European Commission Weekly Oil Bulletin EU average Euro-super 95 prices are converted from EUR/liter to USD/gallon using European Central Bank USD per EUR reference rates.",
+      inflation: `Inflation-adjusted values use CPIAUCSL from FRED and are expressed in ${baseCpi.date.slice(0, 7)} dollars. The Europe overlay is converted to USD/gallon first and then adjusted with U.S. CPI for dollar comparison; it is not a local EU inflation adjustment.`,
+      oilStocks: "Oil-company stock performance uses Nasdaq historical close chart data, sampled monthly and indexed to 100 at the visible start date. It is price performance only, not dividend-adjusted total return.",
       noReddit: true,
     },
     sources: [
@@ -287,6 +372,12 @@ async function main() {
         url: "https://fred.stlouisfed.org/series/USREC",
       },
       {
+        id: "cpiaucsl",
+        label: "Consumer Price Index for All Urban Consumers",
+        publisher: "U.S. Bureau of Labor Statistics via FRED",
+        url: "https://fred.stlouisfed.org/series/CPIAUCSL",
+      },
+      {
         id: "ec-oil-bulletin",
         label: "EU average Euro-super 95 petrol price",
         publisher: "European Commission Directorate-General for Energy",
@@ -304,6 +395,12 @@ async function main() {
         publisher: "S&P Dow Jones Indices / FRED",
         url: "https://fred.stlouisfed.org/series/DJIA",
       },
+      {
+        id: "nasdaq-equity-charts",
+        label: "Oil-company historical close prices",
+        publisher: "Nasdaq",
+        url: "https://www.nasdaq.com/market-activity/stocks",
+      },
     ],
     metrics: {
       weeklyObservations: points.length,
@@ -314,15 +411,19 @@ async function main() {
       lastDate: points.at(-1)?.date,
       europeFirstDate: europeSeries[0]?.date,
       europeLastDate: europeSeries.at(-1)?.date,
+      cpiBaseDate: baseCpi?.date,
+      oilCompanyCount: oilStockSeries.length,
       gasMarketWeeklyChangeCorrelation: round(pearsonCorrelation(points, "gasWeeklyChangePct", "marketWeeklyChangePct"), 3),
     },
     series: points,
     annualSeries,
     europeSeries,
+    oilStockSeries,
+    cpiMonthly,
     recessionMonthly,
     recessions: buildRecessionSpans(recessionMonthly),
     presidents,
-    administrations: administrationSummaries(points, presidents),
+    administrations: administrationSummaries(administrationPoints, presidents),
     events,
   };
 

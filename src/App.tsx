@@ -2,7 +2,9 @@ import { AlertCircle, BarChart3, BookOpen, CalendarRange, CheckCircle2, External
 import { useEffect, useMemo, useState } from "react";
 import { clamp, dateToMs, extent, formatDate, formatYear, niceMoney, pathFromPoints } from "./lib/chart";
 import { loadDataset } from "./lib/data";
-import type { AnnualSeriesPoint, AppDataset, EuropeSeriesPoint, EventMarker, OverlayKey, SeriesPoint, ViewMode } from "./types";
+import type { AnnualSeriesPoint, AppDataset, EuropeSeriesPoint, EventMarker, OilStockSeries, OverlayKey, SeriesPoint, ViewMode } from "./types";
+
+type PriceMode = "actual" | "real";
 
 type ChartPoint = (SeriesPoint | AnnualSeriesPoint) & {
   marketIndex?: number | null;
@@ -31,6 +33,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<ViewMode>("timeline");
   const [startDate, setStartDate] = useState("1990-01-01");
+  const [priceMode, setPriceMode] = useState<PriceMode>("actual");
+  const [activeStocks, setActiveStocks] = useState<Record<string, boolean>>({});
   const [activeOverlays, setActiveOverlays] = useState<Record<OverlayKey, boolean>>({
     market: true,
     europe: true,
@@ -79,7 +83,9 @@ function App() {
 
   const first = points[0];
   const last = points.at(-1);
-  const change = first && last ? ((last.gasPrice - first.gasPrice) / first.gasPrice) * 100 : 0;
+  const firstGas = first ? gasPriceForMode(first, priceMode) : 0;
+  const lastGas = last ? gasPriceForMode(last, priceMode) : 0;
+  const change = first && last ? ((lastGas - firstGas) / firstGas) * 100 : 0;
 
   return (
     <main className="app-shell">
@@ -87,6 +93,7 @@ function App() {
         <div>
           <p className="eyebrow">U.S. gasoline prices, market context, and verified events</p>
           <h1>Gas Prices Interactive</h1>
+          <p className="subtitle">Automatically updated weekly</p>
         </div>
         <div className="trust-pill">
           <ShieldCheck aria-hidden="true" />
@@ -95,13 +102,13 @@ function App() {
       </header>
 
       <section className="metric-strip" aria-label="Dataset summary">
-        <Metric icon={<Fuel />} label="Latest gas price" value={last ? niceMoney(last.gasPrice) : "n/a"} detail={last ? formatDate(last.date) : ""} />
+        <Metric icon={<Fuel />} label={priceMode === "real" ? "Latest real gas price" : "Latest gas price"} value={last ? niceMoney(lastGas) : "n/a"} detail={last ? formatDate(last.date) : ""} />
         <Metric icon={<LineChart />} label="Range change" value={`${change >= 0 ? "+" : ""}${change.toFixed(1)}%`} detail={`Since ${formatYear(startDate)}`} />
         <Metric icon={<BarChart3 />} label="Market proxy" value="NASDAQ" detail="Official FRED series" />
         <Metric
           icon={<Globe2 />}
           label="EU petrol"
-          value={dataset.europeSeries.at(-1)?.euGasUsdPerGallon ? niceMoney(dataset.europeSeries.at(-1)!.euGasUsdPerGallon!) : "n/a"}
+          value={dataset.europeSeries.at(-1) ? niceMoney(europePriceForMode(dataset.europeSeries.at(-1)!, priceMode) ?? 0) : "n/a"}
           detail={dataset.europeSeries.at(-1) ? formatDate(dataset.europeSeries.at(-1)!.date) : ""}
         />
       </section>
@@ -125,6 +132,9 @@ function App() {
             </div>
             <div className="toggle-row">
               <Filter aria-hidden="true" />
+              <button className={`price-mode-button ${priceMode === "real" ? "active" : ""}`} onClick={() => setPriceMode((current) => (current === "actual" ? "real" : "actual"))}>
+                {priceMode === "actual" ? "Adjusted for inflation" : "Actual prices"}
+              </button>
               {overlays.map((overlay) => (
                 <label key={overlay.key} className="toggle">
                   <input
@@ -136,9 +146,24 @@ function App() {
                 </label>
               ))}
             </div>
+            <div className="stock-toggle-row" aria-label="Oil company stock overlays">
+              <span>Oil stocks</span>
+              {dataset.oilStockSeries.map((company) => (
+                <button
+                  key={company.symbol}
+                  className={activeStocks[company.symbol] ? "stock-toggle active" : "stock-toggle"}
+                  style={{ "--stock-color": company.color } as React.CSSProperties}
+                  onClick={() => setActiveStocks((current) => ({ ...current, [company.symbol]: !current[company.symbol] }))}
+                  title={`${company.name} price performance from Nasdaq, indexed to 100 in the stock panel`}
+                >
+                  {company.symbol}
+                </button>
+              ))}
+            </div>
           </section>
 
-          <TimelineChart dataset={dataset} points={points} overlays={activeOverlays} />
+          <TimelineChart dataset={dataset} points={points} overlays={activeOverlays} priceMode={priceMode} />
+          <OilStocksPanel dataset={dataset} activeStocks={activeStocks} startDate={startDate} />
           <SourceNote dataset={dataset} />
         </>
       )}
@@ -150,8 +175,19 @@ function App() {
   );
 }
 
-function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset: AppDataset; points: ChartPoint[]; overlays: Record<OverlayKey, boolean> }) {
+function TimelineChart({
+  dataset,
+  points,
+  overlays: activeOverlays,
+  priceMode,
+}: {
+  dataset: AppDataset;
+  points: ChartPoint[];
+  overlays: Record<OverlayKey, boolean>;
+  priceMode: PriceMode;
+}) {
   const [hover, setHover] = useState<ChartPoint | null>(null);
+  const [hoveredEvent, setHoveredEvent] = useState<EventMarker | null>(null);
   const width = 1180;
   const height = 560;
   const margin = { top: 26, right: 74, bottom: 54, left: 74 };
@@ -160,8 +196,8 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
 
   const [minDate, maxDate] = extent(points.map((point) => dateToMs(point.date)));
   const minGas = 0;
-  const visibleEurope = dataset.europeSeries.filter((point) => point.date >= points[0].date && point.date <= points.at(-1)!.date && point.euGasUsdPerGallon != null);
-  const maxVisiblePrice = Math.max(...points.map((point) => point.gasPrice), ...visibleEurope.map((point) => point.euGasUsdPerGallon ?? 0), 10);
+  const visibleEurope = dataset.europeSeries.filter((point) => point.date >= points[0].date && point.date <= points.at(-1)!.date && europePriceForMode(point, priceMode) != null);
+  const maxVisiblePrice = Math.max(...points.map((point) => gasPriceForMode(point, priceMode)), ...visibleEurope.map((point) => europePriceForMode(point, priceMode) ?? 0), 10);
   const maxGas = Math.ceil((maxVisiblePrice * 1.08) / 2.5) * 2.5;
   const marketValues = points.map((point) => point.marketNormalized).filter((value): value is number => value != null);
   const [minMarket, maxMarket] = marketValues.length ? extent(marketValues) : [0, 1];
@@ -169,15 +205,22 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
   const x = (date: string) => margin.left + ((dateToMs(date) - minDate) / (maxDate - minDate)) * innerWidth;
   const yGas = (value: number) => margin.top + (1 - (value - minGas) / (maxGas - minGas)) * innerHeight;
   const yMarket = (value: number) => margin.top + (1 - (value - minMarket) / (maxMarket - minMarket)) * innerHeight;
-  const gasPath = pathFromPoints(points, (point) => x(point.date), (point) => yGas(point.gasPrice));
+  const gasPath = pathFromPoints(points, (point) => x(point.date), (point) => yGas(gasPriceForMode(point, priceMode)));
   const marketPath = pathFromPoints(points, (point) => x(point.date), (point) => (point.marketNormalized == null ? null : yMarket(point.marketNormalized)));
-  const europePath = pathFromPoints(visibleEurope, (point) => x(point.date), (point) => (point.euGasUsdPerGallon == null ? null : yGas(point.euGasUsdPerGallon)));
+  const europePath = pathFromPoints(visibleEurope, (point) => x(point.date), (point) => {
+    const price = europePriceForMode(point, priceMode);
+    return price == null ? null : yGas(price);
+  });
   const selected = hover ?? points.at(-1)!;
   const selectedEurope = nearestEuropePoint(visibleEurope, selected.date);
   const visibleEvents = dataset.events.filter((event) => event.date >= points[0].date && event.date <= points.at(-1)!.date);
   const years = buildYearTicks(points[0].date, points.at(-1)!.date);
   const isLongView = points[0].date < "1990-01-01";
   const yTicks = buildMoneyTicks(maxGas);
+  const selectedGas = gasPriceForMode(selected, priceMode);
+  const selectedEuropePrice = selectedEurope ? europePriceForMode(selectedEurope, priceMode) : null;
+  const eventTooltipWidth = hoveredEvent ? Math.min(430, Math.max(190, hoveredEvent.title.length * 7 + 32)) : 0;
+  const eventTooltipX = hoveredEvent ? clamp(x(hoveredEvent.date) - eventTooltipWidth / 2, margin.left + 8, width - margin.right - eventTooltipWidth - 8) : 0;
 
   function handleMove(event: React.PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -198,12 +241,13 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
         </div>
         <div className="readout">
           <span>{formatDate(selected.date)}</span>
-          <strong>{niceMoney(selected.gasPrice)}</strong>
-          <small>{selectedEurope?.euGasUsdPerGallon ? `EU ${niceMoney(selectedEurope.euGasUsdPerGallon)}` : selected.marketNormalized ? `Market ${selected.marketNormalized.toFixed(1)}` : "Market n/a"}</small>
+          <strong>{niceMoney(selectedGas)}</strong>
+          <small>{selectedEuropePrice ? `EU ${niceMoney(selectedEuropePrice)}` : selected.marketNormalized ? `Market ${selected.marketNormalized.toFixed(1)}` : "Market n/a"}</small>
+          <em>{priceMode === "real" ? `U.S. CPI adjusted to ${dataset.metrics.cpiBaseDate.slice(0, 7)} dollars` : "Actual pump prices"}</em>
         </div>
       </div>
       <div className="chart-scroll">
-      <svg className="timeline-svg" viewBox={`0 0 ${width} ${height}`} role="img" onPointerMove={handleMove} onPointerLeave={() => setHover(null)}>
+      <svg className="timeline-svg" viewBox={`0 0 ${width} ${height}`} role="img" onPointerMove={handleMove} onPointerLeave={() => { setHover(null); setHoveredEvent(null); }}>
         <rect className="plot-bg" x={margin.left} y={margin.top} width={innerWidth} height={innerHeight} rx="8" />
 
         {years.map((year) => (
@@ -269,25 +313,105 @@ function TimelineChart({ dataset, points, overlays: activeOverlays }: { dataset:
 
         {activeOverlays.events &&
           visibleEvents.map((event) => (
-            <g key={event.id} className={`event-marker ${event.category}`}>
+            <g
+              key={event.id}
+              className={`event-marker ${event.category}`}
+              onPointerEnter={() => setHoveredEvent(event)}
+              onPointerLeave={() => setHoveredEvent(null)}
+              aria-label={event.title}
+            >
               <line x1={x(event.date)} x2={x(event.date)} y1={margin.top + 24} y2={height - margin.bottom} />
               <circle cx={x(event.date)} cy={margin.top + 24} r="6" />
-              <title>{event.title}</title>
             </g>
           ))}
 
+        {hoveredEvent && (
+          <g className="event-tooltip" transform={`translate(${eventTooltipX} ${margin.top + 36})`}>
+            <rect width={eventTooltipWidth} height="34" rx="7" />
+            <text x="16" y="22">{hoveredEvent.title}</text>
+          </g>
+        )}
+
         <g className="hover-marker">
           <line x1={x(selected.date)} x2={x(selected.date)} y1={margin.top} y2={height - margin.bottom} />
-          <circle cx={x(selected.date)} cy={yGas(selected.gasPrice)} r="6" />
+          <circle cx={x(selected.date)} cy={yGas(selectedGas)} r="6" />
         </g>
       </svg>
       </div>
       <div className="legend-row">
-        <span className="legend gas" title="U.S. retail gasoline price from EIA/FRED. In the 1949 view, pre-1990 values are annual EIA context; 1990 onward is weekly.">Gasoline</span>
-        <span className="legend europe" title="EU average Euro-super 95 from the European Commission, converted from EUR/liter to USD/gallon using ECB USD/EUR reference rates.">Europe</span>
-        <span className="legend market" title="NASDAQ Composite via FRED, indexed to 100 at the selected start date. It is a broad market-context line, not a gasoline price.">NASDAQ proxy</span>
-        <span className="legend recession" title="NBER U.S. recession indicator via FRED, shown as shaded periods.">NBER recession</span>
-        <span className="legend event" title="Curated event markers backed by official or institutional source links in the research view.">Verified event</span>
+        <span className="legend gas" tabIndex={0} data-tooltip="U.S. retail gasoline price from EIA/FRED. Pre-1990 values are annual EIA context; 1990 onward is weekly.">Gasoline</span>
+        <span className="legend europe" tabIndex={0} data-tooltip="EU average Euro-super 95 from the European Commission, converted from EUR/liter to USD/gallon using ECB reference rates. Inflation mode applies U.S. CPI after conversion for dollar comparison.">Europe</span>
+        <span className="legend market" tabIndex={0} data-tooltip="NASDAQ Composite via FRED, indexed to 100 at the selected start date. This is broad market context, not a gasoline price.">NASDAQ proxy</span>
+        <span className="legend recession" tabIndex={0} data-tooltip="NBER U.S. recession indicator via FRED, shown as shaded periods.">NBER recession</span>
+        <span className="legend event" tabIndex={0} data-tooltip="Curated event markers backed by official or institutional source links in the research view.">Verified event</span>
+      </div>
+    </section>
+  );
+}
+
+function OilStocksPanel({ dataset, activeStocks, startDate }: { dataset: AppDataset; activeStocks: Record<string, boolean>; startDate: string }) {
+  const selected = dataset.oilStockSeries
+    .filter((series) => activeStocks[series.symbol])
+    .map((series) => normalizeStockSeries(series, startDate))
+    .filter((series) => series.points.length > 1);
+
+  if (!selected.length) return null;
+
+  const width = 1180;
+  const height = 320;
+  const margin = { top: 22, right: 44, bottom: 46, left: 64 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+  const allPoints = selected.flatMap((series) => series.points);
+  const [minDate, maxDate] = extent(allPoints.map((point) => dateToMs(point.date)));
+  const minDateLabel = new Date(minDate).toISOString().slice(0, 10);
+  const maxDateLabel = new Date(maxDate).toISOString().slice(0, 10);
+  const [rawMinIndex, rawMaxIndex] = extent(allPoints.map((point) => point.index));
+  const minIndex = Math.max(0, Math.floor((rawMinIndex * 0.94) / 25) * 25);
+  const maxIndex = Math.ceil((rawMaxIndex * 1.06) / 25) * 25;
+  const x = (date: string) => margin.left + ((dateToMs(date) - minDate) / (maxDate - minDate)) * innerWidth;
+  const y = (value: number) => margin.top + (1 - (value - minIndex) / (maxIndex - minIndex)) * innerHeight;
+  const years = buildYearTicks(minDateLabel, maxDateLabel);
+  const ticks = buildIndexTicks(minIndex, maxIndex);
+
+  return (
+    <section className="stock-panel" aria-label="Oil company stock performance chart">
+      <div className="chart-head compact">
+        <div>
+          <h2>Oil company stock performance</h2>
+          <p>Monthly Nasdaq close prices indexed to 100 at each selected company&apos;s first visible observation. Price performance only; dividends are not included.</p>
+        </div>
+      </div>
+      <div className="chart-scroll">
+        <svg className="stock-svg" viewBox={`0 0 ${width} ${height}`} role="img">
+          <rect className="plot-bg" x={margin.left} y={margin.top} width={innerWidth} height={innerHeight} rx="8" />
+          {years.map((year) => (
+            <g key={year}>
+              <line className="grid-line" x1={x(`${year}-01-01`)} x2={x(`${year}-01-01`)} y1={margin.top} y2={height - margin.bottom} />
+              <text className="axis-label" x={x(`${year}-01-01`)} y={height - 16} textAnchor="middle">
+                {year}
+              </text>
+            </g>
+          ))}
+          {ticks.map((value) => (
+            <g key={value}>
+              <line className="grid-line horizontal" x1={margin.left} x2={width - margin.right} y1={y(value)} y2={y(value)} />
+              <text className="axis-label" x={margin.left - 10} y={y(value) + 4} textAnchor="end">
+                {value}
+              </text>
+            </g>
+          ))}
+          {selected.map((series) => (
+            <path key={series.symbol} className="stock-line" d={pathFromPoints(series.points, (point) => x(point.date), (point) => y(point.index))} style={{ stroke: series.color }} />
+          ))}
+        </svg>
+      </div>
+      <div className="stock-legend">
+        {selected.map((series) => (
+          <span key={series.symbol} style={{ "--stock-color": series.color } as React.CSSProperties}>
+            <strong>{series.symbol}</strong> {series.name}
+          </span>
+        ))}
       </div>
     </section>
   );
@@ -365,12 +489,15 @@ function ResearchCanvas({ dataset }: { dataset: AppDataset }) {
           <p>{dataset.policy.longView}</p>
           <p>{dataset.policy.marketOverlay}</p>
           <p>{dataset.policy.europeOverlay}</p>
+          <p>{dataset.policy.inflation}</p>
+          <p>{dataset.policy.oilStocks}</p>
         </article>
         <article className="research-block">
           <h3>Dataset status</h3>
           <p>{dataset.metrics.annualObservations.toLocaleString()} annual U.S. observations beginning {formatYear(dataset.metrics.longFirstDate)}.</p>
           <p>{dataset.metrics.weeklyObservations.toLocaleString()} weekly observations from {formatDate(dataset.metrics.firstDate)} through {formatDate(dataset.metrics.lastDate)}.</p>
           <p>{dataset.metrics.europeanObservations.toLocaleString()} European observations from {formatDate(dataset.metrics.europeFirstDate)} through {formatDate(dataset.metrics.europeLastDate)}.</p>
+          <p>{dataset.metrics.oilCompanyCount.toLocaleString()} oil-company equity series sampled monthly from Nasdaq.</p>
           <p>Weekly gas/market change correlation: {dataset.metrics.gasMarketWeeklyChangeCorrelation ?? "n/a"}.</p>
         </article>
         <article className="research-block wide">
@@ -389,7 +516,7 @@ function ResearchCanvas({ dataset }: { dataset: AppDataset }) {
           <h3>Open research questions</h3>
           <ul className="plain-list">
             <li>Which regional gasoline series should be added after the national view: PADD regions, selected states, or major cities?</li>
-            <li>Should real inflation-adjusted gasoline be added as a second price mode using official CPI data?</li>
+            <li>Should oil-company equities be expanded beyond integrated majors into refiners, services, and pipelines?</li>
             <li>Which event threshold should define “major” in later versions: price move size, source consensus, or editorial importance?</li>
           </ul>
         </article>
@@ -403,7 +530,7 @@ function SourceNote({ dataset }: { dataset: AppDataset }) {
     <section className="source-note">
       <CheckCircle2 aria-hidden="true" />
       <p>
-        Data generated {formatDate(dataset.generatedAt.slice(0, 10))}. Gasoline: EIA via FRED and EIA MER Table 9.4. Europe: European Commission plus ECB conversion. Market proxy: Nasdaq Composite via FRED.
+        Data generated {formatDate(dataset.generatedAt.slice(0, 10))}. Gasoline: EIA via FRED and EIA MER Table 9.4. Inflation: CPIAUCSL via FRED. Europe: European Commission plus ECB conversion. Market proxy: Nasdaq Composite via FRED. Oil equities: Nasdaq chart data sampled monthly.
         DJIA is cited for context where official licensing allows, but the long raw Dow series is not redistributed.
       </p>
     </section>
@@ -459,6 +586,33 @@ function buildMoneyTicks(maxValue: number) {
   for (let value = 0; value <= maxValue + 0.001; value += step) ticks.push(value);
   if (ticks.at(-1) !== maxValue) ticks.push(maxValue);
   return ticks;
+}
+
+function buildIndexTicks(minValue: number, maxValue: number) {
+  const ticks = [];
+  for (let value = minValue; value <= maxValue + 0.001; value += 25) ticks.push(value);
+  return ticks;
+}
+
+function gasPriceForMode(point: ChartPoint, mode: PriceMode) {
+  return mode === "real" ? point.gasPriceReal : point.gasPrice;
+}
+
+function europePriceForMode(point: EuropeSeriesPoint, mode: PriceMode) {
+  return mode === "real" ? point.euGasUsdPerGallonReal : point.euGasUsdPerGallon;
+}
+
+function normalizeStockSeries(series: OilStockSeries, startDate: string) {
+  const points = series.points.filter((point) => point.date >= startDate);
+  if (!points.length) return { ...series, points: [] as Array<{ date: string; index: number }> };
+  const base = points[0].close;
+  return {
+    ...series,
+    points: points.map((point) => ({
+      date: point.date,
+      index: (point.close / base) * 100,
+    })),
+  };
 }
 
 function nearestChartPoint(points: ChartPoint[], targetMs: number) {

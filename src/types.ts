@@ -5,6 +5,7 @@ export type EventCategory = "war" | "opec" | "macro" | "supply" | "policy";
 export interface SeriesPoint {
   date: string;
   gasPrice: number;
+  gasPriceReal: number;
   gasWeeklyChangePct: number | null;
   marketIndex: number | null;
   marketNormalized: number | null;
@@ -16,6 +17,7 @@ export interface EuropeSeriesPoint {
   euGasEurPerLiter: number;
   usdPerEur: number | null;
   euGasUsdPerGallon: number | null;
+  euGasUsdPerGallonReal: number | null;
   euGasWeeklyChangePct: number | null;
 }
 
@@ -23,6 +25,7 @@ export interface AnnualSeriesPoint {
   date: string;
   year: number;
   gasPrice: number;
+  gasPriceReal: number;
   cadence: "annual";
   sourceSeries: string;
   sourceLabel: string;
@@ -70,6 +73,25 @@ export interface DataSource {
   url: string;
 }
 
+export interface OilStockPoint {
+  date: string;
+  close: number;
+}
+
+export interface OilStockSeries {
+  symbol: string;
+  name: string;
+  color: string;
+  sourceName: string;
+  sourceUrl: string;
+  points: OilStockPoint[];
+}
+
+export interface CpiPoint {
+  date: string;
+  value: number;
+}
+
 export interface AppDataset {
   generatedAt: string;
   policy: {
@@ -77,6 +99,8 @@ export interface AppDataset {
     marketOverlay: string;
     longView: string;
     europeOverlay: string;
+    inflation: string;
+    oilStocks: string;
     noReddit: boolean;
   };
   sources: DataSource[];
@@ -89,11 +113,15 @@ export interface AppDataset {
     lastDate: string;
     europeFirstDate: string;
     europeLastDate: string;
+    cpiBaseDate: string;
+    oilCompanyCount: number;
     gasMarketWeeklyChangeCorrelation: number | null;
   };
   series: SeriesPoint[];
   annualSeries: AnnualSeriesPoint[];
   europeSeries: EuropeSeriesPoint[];
+  oilStockSeries: OilStockSeries[];
+  cpiMonthly: CpiPoint[];
   recessions: RecessionSpan[];
   presidents: PresidentTerm[];
   administrations: AdministrationSummary[];

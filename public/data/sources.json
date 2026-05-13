@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-12T18:28:46.078Z",
+  "generatedAt": "2026-05-13T17:11:49.703Z",
   "sources": [
     {
       "id": "gasregw",
@@ -26,6 +26,12 @@
       "url": "https://fred.stlouisfed.org/series/USREC"
     },
     {
+      "id": "cpiaucsl",
+      "label": "Consumer Price Index for All Urban Consumers",
+      "publisher": "U.S. Bureau of Labor Statistics via FRED",
+      "url": "https://fred.stlouisfed.org/series/CPIAUCSL"
+    },
+    {
       "id": "ec-oil-bulletin",
       "label": "EU average Euro-super 95 petrol price",
       "publisher": "European Commission Directorate-General for Energy",
@@ -42,6 +48,12 @@
       "label": "Dow Jones Industrial Average context",
       "publisher": "S&P Dow Jones Indices / FRED",
       "url": "https://fred.stlouisfed.org/series/DJIA"
+    },
+    {
+      "id": "nasdaq-equity-charts",
+      "label": "Oil-company historical close prices",
+      "publisher": "Nasdaq",
+      "url": "https://www.nasdaq.com/market-activity/stocks"
     }
   ],
   "eventSources": [
