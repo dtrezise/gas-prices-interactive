@@ -268,15 +268,18 @@ h3 {
   padding: 0 13px;
 }
 
-.price-mode-button.floating {
-  position: absolute;
-  z-index: 6;
-  top: 16px;
-  left: clamp(150px, 28%, 360px);
+.price-mode-button.chart-mode {
   min-height: 36px;
   padding: 0 15px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 24px rgba(24, 32, 42, 0.16);
+}
+
+.chart-action-row {
+  display: flex;
+  justify-content: flex-start;
+  min-height: 42px;
+  margin: -4px 0 6px;
+  padding-left: clamp(86px, 22%, 260px);
+  align-items: center;
 }
 
 .price-mode-button.active {

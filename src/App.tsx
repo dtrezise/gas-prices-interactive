@@ -44,7 +44,12 @@ function App() {
   });
 
   useEffect(() => {
-    loadDataset().then(setDataset).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+    loadDataset()
+      .then((loadedDataset) => {
+        setDataset(loadedDataset);
+        setActiveStocks(Object.fromEntries(loadedDataset.oilStockSeries.map((series) => [series.symbol, true])));
+      })
+      .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
 
   const points = useMemo(() => {
@@ -231,10 +236,12 @@ function TimelineChart({
           <em>{priceMode === "real" ? `U.S. CPI adjusted to ${dataset.metrics.cpiBaseDate.slice(0, 7)} dollars` : "Actual pump prices"}</em>
         </div>
       </div>
-      <div className="chart-viewport">
-        <button className={`price-mode-button floating ${priceMode === "real" ? "active" : ""}`} onClick={onTogglePriceMode}>
+      <div className="chart-action-row">
+        <button className={`price-mode-button chart-mode ${priceMode === "real" ? "active" : ""}`} onClick={onTogglePriceMode}>
           {priceMode === "real" ? "Adjusted for Inflation" : "Actual Prices"}
         </button>
+      </div>
+      <div className="chart-viewport">
         <div className="chart-scroll">
         <svg className="timeline-svg" viewBox={`0 0 ${width} ${height}`} role="img" onPointerMove={handleMove} onPointerLeave={() => { setHover(null); setHoveredEvent(null); }}>
         <rect className="plot-bg" x={margin.left} y={margin.top} width={innerWidth} height={innerHeight} rx="8" />
