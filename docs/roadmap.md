@@ -21,14 +21,16 @@ This roadmap keeps the rebuild focused on a trustworthy presidential-term gas-pr
 - Added dedicated methodology view.
 - Split series, export, and view-state logic out of the main React component.
 - Added durable agentic role cards and role-aware issue/PR templates.
+- Added event filtering by category and confidence.
+- Added an administration detail panel with term high, low, start, end, change, duration, and in-term curated events.
 
 ## Near-Term Enhancements
 
 - Add visual regression smoke tests for desktop and mobile chart states.
 - Add keyboard-accessible range stepping for the timeline.
 - Add a compact mobile chart summary for small screens before horizontal scrolling.
-- Add event filtering by category and confidence.
-- Add an administration detail drawer with term high, low, start, end, and nearby events.
+- Add side-by-side administration comparison for two selected terms.
+- Add source-linked event detail drawers for fuller evidence inspection.
 
 ## Data Expansion Candidates
 
@@ -52,4 +54,3 @@ This roadmap keeps the rebuild focused on a trustworthy presidential-term gas-pr
 - Keep source-policy allowlists current.
 - Record why each event belongs in the dataset.
 - Avoid unsupported blame, credit, or single-cause claims.
-

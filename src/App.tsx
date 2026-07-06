@@ -5,7 +5,7 @@ import { loadDataset } from "./lib/data";
 import { downloadCsv, visibleSeriesCsv } from "./lib/export";
 import { clampDateRange, europePriceForMode, gasPriceForMode, maxDateString, minDateString, nearestChartPoint, nearestEuropePoint, normalizeStockSeries, visibleChartPoints } from "./lib/series";
 import { defaultOverlays, readViewState, writeViewState } from "./lib/viewState";
-import type { AppDataset, ChartPoint, EventMarker, OilStockSeries, OverlayKey, PriceMode, ViewMode } from "./types";
+import type { AppDataset, ChartPoint, Confidence, EventCategory, EventMarker, OilStockSeries, OverlayKey, PriceMode, ViewMode } from "./types";
 
 const overlays: Array<{ key: OverlayKey; label: string }> = [
   { key: "market", label: "Market" },
@@ -22,6 +22,9 @@ const ranges = [
   { label: "2010", start: "2010-01-01" },
   { label: "2020", start: "2020-01-01" },
 ];
+
+const eventCategories: EventCategory[] = ["war", "opec", "macro", "supply", "policy"];
+const confidenceLevels: Confidence[] = ["high", "medium", "low"];
 
 function App() {
   const [dataset, setDataset] = useState<AppDataset | null>(null);
@@ -566,14 +569,57 @@ function OilStocksPanel({
 }
 
 function EventsView({ events }: { events: EventMarker[] }) {
+  const [activeCategories, setActiveCategories] = useState<Record<EventCategory, boolean>>({
+    war: true,
+    opec: true,
+    macro: true,
+    supply: true,
+    policy: true,
+  });
+  const [activeConfidence, setActiveConfidence] = useState<Record<Confidence, boolean>>({
+    high: true,
+    medium: true,
+    low: true,
+  });
+  const filteredEvents = events.filter((event) => activeCategories[event.category] && activeConfidence[event.confidence]);
+
   return (
     <section className="list-view">
       <div className="section-heading">
         <h2>Event-driven story</h2>
-        <p>Events are included only when a trusted source supports the link to oil, gasoline, supply, demand, or market risk.</p>
+        <p>Events are included only when a trusted source supports the link to oil, gasoline, supply, demand, or market risk. Filters change the view, not the underlying source list.</p>
+      </div>
+      <div className="filter-panel" aria-label="Event filters">
+        <div>
+          <span>Category</span>
+          <div className="chip-row">
+            {eventCategories.map((category) => (
+              <ToggleChip
+                key={category}
+                active={activeCategories[category]}
+                label={category}
+                onClick={() => setActiveCategories((current) => ({ ...current, [category]: !current[category] }))}
+              />
+            ))}
+          </div>
+        </div>
+        <div>
+          <span>Confidence</span>
+          <div className="chip-row">
+            {confidenceLevels.map((confidence) => (
+              <ToggleChip
+                key={confidence}
+                active={activeConfidence[confidence]}
+                label={confidence}
+                onClick={() => setActiveConfidence((current) => ({ ...current, [confidence]: !current[confidence] }))}
+              />
+            ))}
+          </div>
+        </div>
+        <strong>{filteredEvents.length} of {events.length} shown</strong>
       </div>
       <div className="event-grid">
-        {events.map((event) => (
+        {filteredEvents.map((event) => (
           <article key={event.id} className={`event-card ${event.category}`}>
             <div className="event-date">{formatDate(event.date)}</div>
             <h3>{event.title}</h3>
@@ -587,37 +633,81 @@ function EventsView({ events }: { events: EventMarker[] }) {
           </article>
         ))}
       </div>
+      {!filteredEvents.length && <p className="empty-note">No events match the current filters.</p>}
     </section>
   );
 }
 
 function AdministrationView({ dataset }: { dataset: AppDataset }) {
+  const [selectedTermId, setSelectedTermId] = useState(() => `${dataset.administrations.at(-1)?.name}-${dataset.administrations.at(-1)?.start}`);
+  const selectedTerm = dataset.administrations.find((term) => `${term.name}-${term.start}` === selectedTermId) ?? dataset.administrations.at(-1)!;
+  const nearbyEvents = dataset.events.filter((event) => event.date >= selectedTerm.start && event.date < selectedTerm.end);
+  const termYears = selectedTerm.weeks / 52.1775;
+
   return (
     <section className="list-view">
       <div className="section-heading">
         <h2>Administration comparison</h2>
         <p>Presidential terms are context bands. The table is descriptive and does not assign causality to presidents.</p>
       </div>
-      <div className="admin-table">
-        <div className="admin-row header">
-          <span>Administration</span>
-          <span>Start</span>
-          <span>End</span>
-          <span>Change</span>
-          <span>Term high</span>
-        </div>
-        {dataset.administrations.map((term) => (
-          <div key={`${term.name}-${term.start}`} className="admin-row">
-            <span>
-              <strong>{term.name}</strong>
-              <small>{term.party}</small>
-            </span>
-            <span>{niceMoney(term.startGas)}</span>
-            <span>{niceMoney(term.endGas)}</span>
-            <span className={term.changePct >= 0 ? "up" : "down"}>{term.changePct >= 0 ? "+" : ""}{term.changePct}%</span>
-            <span>{niceMoney(term.highGas)} <small>{formatYear(term.highDate)}</small></span>
+      <div className="admin-layout">
+        <div className="admin-table" role="list" aria-label="Administration comparison table">
+          <div className="admin-row header">
+            <span>Administration</span>
+            <span>Start</span>
+            <span>End</span>
+            <span>Change</span>
+            <span>Term high</span>
           </div>
-        ))}
+          {dataset.administrations.map((term) => {
+            const termId = `${term.name}-${term.start}`;
+            return (
+              <button key={termId} className={selectedTermId === termId ? "admin-row selected" : "admin-row"} onClick={() => setSelectedTermId(termId)} role="listitem">
+                <span>
+                  <strong>{term.name}</strong>
+                  <small>{term.party}</small>
+                </span>
+                <span>{niceMoney(term.startGas)}</span>
+                <span>{niceMoney(term.endGas)}</span>
+                <span className={term.changePct >= 0 ? "up" : "down"}>{term.changePct >= 0 ? "+" : ""}{term.changePct}%</span>
+                <span>{niceMoney(term.highGas)} <small>{formatYear(term.highDate)}</small></span>
+              </button>
+            );
+          })}
+        </div>
+        <aside className="admin-detail" aria-label={`${selectedTerm.name} term details`}>
+          <div>
+            <span className="detail-kicker">Selected term</span>
+            <h3>{selectedTerm.name}</h3>
+            <p>{formatDate(selectedTerm.start)} to {formatDate(selectedTerm.end)}. About {termYears.toFixed(1)} years of weekly observations where available.</p>
+          </div>
+          <div className="detail-metrics">
+            <MetricMini label="Start" value={niceMoney(selectedTerm.startGas)} detail={String(formatYear(selectedTerm.start))} />
+            <MetricMini label="End" value={niceMoney(selectedTerm.endGas)} detail={String(formatYear(selectedTerm.end))} />
+            <MetricMini label="Low" value={niceMoney(selectedTerm.lowGas)} detail={formatDate(selectedTerm.lowDate)} />
+            <MetricMini label="High" value={niceMoney(selectedTerm.highGas)} detail={formatDate(selectedTerm.highDate)} />
+          </div>
+          <div className="detail-callout">
+            <strong className={selectedTerm.changePct >= 0 ? "up" : "down"}>{selectedTerm.changePct >= 0 ? "+" : ""}{selectedTerm.changePct}%</strong>
+            <span>Term change in nominal gasoline price. This is descriptive context, not causal attribution.</span>
+          </div>
+          <div>
+            <h3>Events during term</h3>
+            {nearbyEvents.length ? (
+              <ul className="mini-event-list">
+                {nearbyEvents.map((event) => (
+                  <li key={event.id}>
+                    <span>{formatDate(event.date)}</span>
+                    <strong>{event.title}</strong>
+                    <small>{event.category} / {event.confidence}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-note">No curated events fall within this term.</p>
+            )}
+          </div>
+        </aside>
       </div>
     </section>
   );
@@ -751,6 +841,24 @@ function ModeButton({ active, icon, label, onClick }: { active: boolean; icon: R
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function ToggleChip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button className={active ? "toggle-chip active" : "toggle-chip"} onClick={onClick}>
+      {label}
+    </button>
+  );
+}
+
+function MetricMini({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="metric-mini">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </div>
   );
 }
 
