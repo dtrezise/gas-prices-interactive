@@ -21,6 +21,14 @@ npm run dev
 
 GitHub Actions also runs a scheduled Tuesday refresh that fetches official data, verifies it, builds the static artifact, and republishes GitHub Pages.
 
+## Agentic Development
+
+This project uses standing expert roles for development and review: Data Integrity Analyst, Energy Markets Researcher, Frontend Visualization Engineer, Product Editor / Narrative Designer, QA Automation Engineer, and Civic / Policy Context Reviewer. See `AGENTS.md` and `docs/agents/` for role cards, activation guidance, and review checklists.
+
+## Roadmap
+
+The rebuild roadmap is tracked in `docs/roadmap.md`. The core direction is a presidential-term gas-price comparison with visible methodology, official-source data, shareable chart state, exportable visible-range CSVs, and expandable overlays for market and energy context.
+
 ## Notes
 
 - Gasoline data: EIA `GASREGW` via FRED.

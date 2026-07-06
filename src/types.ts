@@ -31,6 +31,14 @@ export interface AnnualSeriesPoint {
   sourceLabel: string;
 }
 
+export type PriceMode = "actual" | "real";
+
+export type ChartPoint = (SeriesPoint | AnnualSeriesPoint) & {
+  marketIndex?: number | null;
+  marketNormalized?: number | null;
+  marketWeeklyChangePct?: number | null;
+};
+
 export interface EventMarker {
   id: string;
   date: string;
@@ -129,4 +137,4 @@ export interface AppDataset {
 }
 
 export type OverlayKey = "market" | "europe" | "presidents" | "events" | "recessions";
-export type ViewMode = "timeline" | "events" | "administrations" | "research";
+export type ViewMode = "timeline" | "events" | "administrations" | "methodology" | "research";
