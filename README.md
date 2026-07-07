@@ -19,7 +19,7 @@ npm run build
 npm run dev
 ```
 
-GitHub Actions also runs a scheduled Tuesday refresh that fetches official data, verifies it, builds the static artifact, and republishes GitHub Pages.
+GitHub Actions also runs a scheduled weekly refresh every Tuesday at 11:30 UTC. The workflow fetches official data, verifies it, runs tests, builds the static artifact, and republishes GitHub Pages. The same workflow can be run manually with `workflow_dispatch`.
 
 ## Agentic Development
 

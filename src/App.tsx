@@ -1,4 +1,4 @@
-import { AlertCircle, BarChart3, BookOpen, CalendarRange, CheckCircle2, Download, ExternalLink, Filter, Fuel, Globe2, Landmark, LineChart, RotateCcw, Share2, ShieldCheck } from "lucide-react";
+import { AlertCircle, BarChart3, BookOpen, CalendarRange, CheckCircle2, Download, ExternalLink, Filter, Fuel, Globe2, Landmark, LineChart, RefreshCw, RotateCcw, Share2, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { clamp, dateToMs, extent, formatDate, formatYear, niceMoney, pathFromPoints } from "./lib/chart";
 import { loadDataset } from "./lib/data";
@@ -127,11 +127,12 @@ function App() {
         <div>
           <p className="eyebrow">U.S. gasoline prices, market context, and verified events</p>
           <h1>Gas Prices Interactive</h1>
-          <p className="subtitle">Automatically updated weekly</p>
+          <p className="subtitle">Live public dashboard with official-source weekly refreshes</p>
         </div>
-        <div className="trust-pill">
-          <ShieldCheck aria-hidden="true" />
-          <span>Official sources only</span>
+        <div className="status-cluster" aria-label="Data status">
+          <DataStatusPill icon={<ShieldCheck />} label="Sources" value="Official only" />
+          <DataStatusPill icon={<RefreshCw />} label="Refresh" value="Tuesdays 11:30 UTC" />
+          <DataStatusPill icon={<CalendarRange />} label="Latest data" value={formatDate(dataset.metrics.lastDate)} />
         </div>
       </header>
 
@@ -832,6 +833,16 @@ function Metric({ icon, label, value, detail }: { icon: React.ReactNode; label: 
       <strong>{value}</strong>
       <small>{detail}</small>
     </article>
+  );
+}
+
+function DataStatusPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="data-status-pill">
+      <div className="status-icon">{icon}</div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
