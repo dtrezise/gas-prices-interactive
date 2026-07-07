@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-06T22:54:46.050Z",
+  "generatedAt": "2026-07-07T00:56:51.424Z",
   "sources": [
     {
       "id": "gasregw",
@@ -111,7 +111,7 @@
       "whyIncluded": "Explains the late-1970s gasoline-price jump visible in annual data.",
       "sources": [
         "https://www.federalreservehistory.org/essays/oil_shock_of_1978_79",
-        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+        "https://tedb.ornl.gov/wp-content/uploads/2020/01/2009_FOTW_Compendium.pdf"
       ]
     },
     {
@@ -125,7 +125,7 @@
       "whyIncluded": "Adds regional-war context for the early-1980s energy-price environment.",
       "sources": [
         "https://www.nber.org/papers/w16790",
-        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+        "https://tedb.ornl.gov/wp-content/uploads/2020/01/2009_FOTW_Compendium.pdf"
       ]
     },
     {
@@ -139,7 +139,7 @@
       "whyIncluded": "A canonical geopolitical oil shock inside the weekly gasoline price record.",
       "sources": [
         "https://www.eia.gov/todayinenergy/detail.php?id=730",
-        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+        "https://tedb.ornl.gov/wp-content/uploads/2020/01/2009_FOTW_Compendium.pdf"
       ]
     },
     {
@@ -153,7 +153,7 @@
       "whyIncluded": "Shows that gas-price pressure can come from demand weakness, not only wars or supply shocks.",
       "sources": [
         "https://www.eia.gov/kids/history-of-energy/timelines/oil-petroleum.php",
-        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+        "https://tedb.ornl.gov/wp-content/uploads/2020/01/2009_FOTW_Compendium.pdf"
       ]
     },
     {
@@ -166,7 +166,7 @@
       "summary": "A late-1990s oil price shock reversed as OPEC and other producers reduced supply after the 1998 collapse.",
       "whyIncluded": "A clear example of coordinated producer action affecting oil-market balance.",
       "sources": [
-        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008",
+        "https://tedb.ornl.gov/wp-content/uploads/2020/01/2009_FOTW_Compendium.pdf",
         "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php"
       ]
     },
@@ -194,7 +194,7 @@
       "whyIncluded": "A geopolitically important moment near the beginning of the 2000s oil-price climb.",
       "sources": [
         "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php",
-        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008"
+        "https://tedb.ornl.gov/wp-content/uploads/2020/01/2009_FOTW_Compendium.pdf"
       ]
     },
     {
@@ -207,7 +207,7 @@
       "summary": "Oil prices reached extreme highs in 2008 before the global financial crisis drove demand and prices downward.",
       "whyIncluded": "A major modern example of gasoline prices, crude oil, and macro stress moving together.",
       "sources": [
-        "https://www.energy.gov/eere/vehicles/fact-579-july-13-2009-oil-price-and-economic-growth-1970-2008",
+        "https://tedb.ornl.gov/wp-content/uploads/2020/01/2009_FOTW_Compendium.pdf",
         "https://www.eia.gov/finance/markets/crudeoil/spot_prices.php"
       ]
     },
