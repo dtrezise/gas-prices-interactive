@@ -344,7 +344,7 @@ async function main() {
       latestGasObservationDate: points.at(-1)?.date,
       latestEuropeObservationDate: europeSeries.at(-1)?.date,
       latestCpiObservationDate: baseCpi?.date,
-      sourceRefreshPolicy: "GitHub Actions refreshes official sources daily and fails release if the U.S. gasoline series falls more than 14 days behind FRED GASREGW.",
+      sourceRefreshPolicy: "Automated daily refreshes pull official sources and fail release if the U.S. gasoline series falls more than 14 days behind FRED GASREGW.",
     },
     policy: {
       sourceTier: "strict official",

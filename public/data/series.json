@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-07T15:31:49.270Z",
+  "generatedAt": "2026-10-07T15:42:22.475Z",
   "refresh": {
     "cadence": "daily",
     "scheduleUtc": "11:30",
@@ -7,7 +7,7 @@
     "latestGasObservationDate": "2026-10-05",
     "latestEuropeObservationDate": "2026-10-05",
     "latestCpiObservationDate": "2026-08-01",
-    "sourceRefreshPolicy": "GitHub Actions refreshes official sources daily and fails release if the U.S. gasoline series falls more than 14 days behind FRED GASREGW."
+    "sourceRefreshPolicy": "Automated daily refreshes pull official sources and fail release if the U.S. gasoline series falls more than 14 days behind FRED GASREGW."
   },
   "policy": {
     "sourceTier": "strict official",
