@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "30 11 * * 2"
+    - cron: "30 11 * * *"
   workflow_dispatch:
 
 permissions:
@@ -37,6 +37,9 @@ jobs:
 
       - name: Update official data
         run: npm run data:update
+
+      - name: Check official data freshness
+        run: npm run data:freshness
 
       - name: Verify trusted data
         run: npm run data:verify

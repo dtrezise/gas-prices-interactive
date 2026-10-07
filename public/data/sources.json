@@ -1,5 +1,14 @@
 {
-  "generatedAt": "2026-07-07T00:56:51.424Z",
+  "generatedAt": "2026-10-07T15:31:49.270Z",
+  "refresh": {
+    "cadence": "daily",
+    "scheduleUtc": "11:30",
+    "freshnessMaxLagDays": 14,
+    "latestGasObservationDate": "2026-10-05",
+    "latestEuropeObservationDate": "2026-10-05",
+    "latestCpiObservationDate": "2026-08-01",
+    "sourceRefreshPolicy": "GitHub Actions refreshes official sources daily and fails release if the U.S. gasoline series falls more than 14 days behind FRED GASREGW."
+  },
   "sources": [
     {
       "id": "gasregw",
@@ -302,6 +311,97 @@
       "whyIncluded": "Adds trusted context for interpreting Persian Gulf blockade or shipping-risk scenarios without claiming an unsourced closure event.",
       "sources": [
         "https://www.eia.gov/todayinenergy/detail.php?id=61002&os=f"
+      ]
+    },
+    {
+      "id": "refinery-utilization-2024",
+      "date": "2024-03-06",
+      "title": "Reduced refinery activity pressures fuel prices",
+      "category": "supply",
+      "impact": "refinery-utilization",
+      "confidence": "high",
+      "summary": "EIA reported that reduced U.S. refinery utilization and lower regional inventories put upward pressure on gasoline and diesel prices in early 2024.",
+      "whyIncluded": "Adds refined-product supply context, which helps explain pump-price moves that are not simply crude-oil price moves.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=61543"
+      ]
+    },
+    {
+      "id": "gasoline-prices-2024-lower",
+      "date": "2025-01-07",
+      "title": "2024 gasoline prices average lower than 2023",
+      "category": "macro",
+      "impact": "lower-crude-and-margins",
+      "confidence": "high",
+      "summary": "EIA found that U.S. regular retail gasoline averaged about $0.20 per gallon less in 2024 than in 2023, helped by lower crude oil prices and narrower refinery margins.",
+      "whyIncluded": "Provides an official annual interpretation of the 2024 price environment and keeps the event record current beyond the 2022 shock period.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=64164"
+      ]
+    },
+    {
+      "id": "hormuz-critical-2025",
+      "date": "2025-06-16",
+      "title": "Strait of Hormuz remains critical amid regional conflict",
+      "category": "supply",
+      "impact": "transit-risk",
+      "confidence": "high",
+      "summary": "EIA reported that flows through the Strait of Hormuz in 2024 and early 2025 represented about one-fifth of global oil and petroleum product consumption.",
+      "whyIncluded": "Updates chokepoint context for interpreting Middle East risk without assuming a single U.S. political cause for gasoline-price moves.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=65504"
+      ]
+    },
+    {
+      "id": "refinery-margins-q3-2025",
+      "date": "2025-10-06",
+      "title": "Refinery margins rise during stable crude-price quarter",
+      "category": "supply",
+      "impact": "refinery-margin-pressure",
+      "confidence": "high",
+      "summary": "EIA reported that crude prices were relatively stable in the third quarter of 2025 while refinery margins increased, with gasoline margins moving above their five-year average in mid-August.",
+      "whyIncluded": "Shows why retail gasoline pressure can emerge from refining margins even when crude prices are not surging.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=66264"
+      ]
+    },
+    {
+      "id": "gasoline-prices-2025-third-decline",
+      "date": "2026-01-07",
+      "title": "2025 gasoline prices fall for third consecutive year",
+      "category": "macro",
+      "impact": "lower-crude-demand-weakness",
+      "confidence": "high",
+      "summary": "EIA reported that U.S. regular retail gasoline prices declined for the third consecutive year in 2025, largely because lower crude prices reflected oversupply concerns and weaker global economic outlook.",
+      "whyIncluded": "Adds official annual context for the first full year of the current administration comparison period.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=66964"
+      ]
+    },
+    {
+      "id": "hormuz-disruptions-2026",
+      "date": "2026-04-01",
+      "title": "Middle East disruptions tighten petroleum markets",
+      "category": "supply",
+      "impact": "hormuz-disruption",
+      "confidence": "high",
+      "summary": "EIA reported that second-quarter 2026 disruptions to international crude oil and petroleum product flows through the Strait of Hormuz contributed to higher and more volatile crude prices and elevated refined-product margins.",
+      "whyIncluded": "Explains the 2026 gasoline-price environment with an official supply and refinery-margin mechanism rather than presidential attribution.",
+      "sources": [
+        "https://www.eia.gov/Todayinenergy/detail.php?id=67865"
+      ]
+    },
+    {
+      "id": "uae-leaves-opec-2026",
+      "date": "2026-05-01",
+      "title": "United Arab Emirates leaves OPEC",
+      "category": "opec",
+      "impact": "producer-coordination-shift",
+      "confidence": "high",
+      "summary": "EIA reported that the UAE's 2026 OPEC exit reduced the group's share of global crude production and capacity, while OPEC+ coordination remained important to crude markets.",
+      "whyIncluded": "Adds a current producer-coordination event relevant to crude-oil price interpretation and OPEC context.",
+      "sources": [
+        "https://www.eia.gov/todayinenergy/detail.php?id=67804"
       ]
     }
   ]

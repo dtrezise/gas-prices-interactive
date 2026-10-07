@@ -9,7 +9,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test scripts/*.test.mjs",
     "data:update": "node scripts/update-data.mjs",
-    "data:verify": "node scripts/verify-data.mjs"
+    "data:verify": "node scripts/verify-data.mjs",
+    "data:freshness": "node scripts/check-freshness.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",

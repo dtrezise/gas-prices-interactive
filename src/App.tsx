@@ -127,11 +127,11 @@ function App() {
         <div>
           <p className="eyebrow">U.S. gasoline prices, market context, and verified events</p>
           <h1>Gas Prices Interactive</h1>
-          <p className="subtitle">Live public dashboard with official-source weekly refreshes</p>
+          <p className="subtitle">Live public dashboard with official-source daily refreshes</p>
         </div>
         <div className="status-cluster" aria-label="Data status">
           <DataStatusPill icon={<ShieldCheck />} label="Sources" value="Official only" />
-          <DataStatusPill icon={<RefreshCw />} label="Refresh" value="Tuesdays 11:30 UTC" />
+          <DataStatusPill icon={<RefreshCw />} label="Refresh" value={`Daily ${dataset.refresh.scheduleUtc} UTC`} />
           <DataStatusPill icon={<CalendarRange />} label="Latest data" value={formatDate(dataset.metrics.lastDate)} />
         </div>
       </header>
@@ -772,6 +772,7 @@ function ResearchCanvas({ dataset }: { dataset: AppDataset }) {
           <p>{dataset.metrics.weeklyObservations.toLocaleString()} weekly observations from {formatDate(dataset.metrics.firstDate)} through {formatDate(dataset.metrics.lastDate)}.</p>
           <p>{dataset.metrics.europeanObservations.toLocaleString()} European observations from {formatDate(dataset.metrics.europeFirstDate)} through {formatDate(dataset.metrics.europeLastDate)}.</p>
           <p>{dataset.metrics.oilCompanyCount.toLocaleString()} oil-company equity series sampled monthly from Nasdaq.</p>
+          <p>Daily refresh policy: releases fail if U.S. gasoline data falls more than {dataset.refresh.freshnessMaxLagDays} days behind FRED GASREGW.</p>
           <p>Weekly gas/market change correlation: {dataset.metrics.gasMarketWeeklyChangeCorrelation ?? "n/a"}.</p>
         </article>
         <article className="research-block wide">
@@ -805,7 +806,7 @@ function SourceNote({ dataset }: { dataset: AppDataset }) {
     <section className="source-note">
       <CheckCircle2 aria-hidden="true" />
       <p>
-        Data generated {formatDate(dataset.generatedAt.slice(0, 10))}. Gasoline: EIA via FRED and EIA MER Table 9.4. Inflation: CPIAUCSL via FRED. Europe: European Commission plus ECB conversion. Market proxy: Nasdaq Composite via FRED. Oil equities: Nasdaq chart data sampled monthly.
+        Data generated {formatDate(dataset.generatedAt.slice(0, 10))}; daily freshness gate: max {dataset.refresh.freshnessMaxLagDays} days behind FRED GASREGW. Gasoline: EIA via FRED and EIA MER Table 9.4. Inflation: CPIAUCSL via FRED. Europe: European Commission plus ECB conversion. Market proxy: Nasdaq Composite via FRED. Oil equities: Nasdaq chart data sampled monthly.
         DJIA is cited for context where official licensing allows, but the long raw Dow series is not redistributed.
       </p>
     </section>

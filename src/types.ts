@@ -102,6 +102,15 @@ export interface CpiPoint {
 
 export interface AppDataset {
   generatedAt: string;
+  refresh: {
+    cadence: "daily";
+    scheduleUtc: string;
+    freshnessMaxLagDays: number;
+    latestGasObservationDate: string;
+    latestEuropeObservationDate: string;
+    latestCpiObservationDate: string;
+    sourceRefreshPolicy: string;
+  };
   policy: {
     sourceTier: string;
     marketOverlay: string;
@@ -124,6 +133,7 @@ export interface AppDataset {
     cpiBaseDate: string;
     oilCompanyCount: number;
     gasMarketWeeklyChangeCorrelation: number | null;
+    sourceFreshnessMaxLagDays: number;
   };
   series: SeriesPoint[];
   annualSeries: AnnualSeriesPoint[];

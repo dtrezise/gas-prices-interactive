@@ -337,6 +337,15 @@ async function main() {
 
   const dataset = {
     generatedAt: new Date().toISOString(),
+    refresh: {
+      cadence: "daily",
+      scheduleUtc: "11:30",
+      freshnessMaxLagDays: 14,
+      latestGasObservationDate: points.at(-1)?.date,
+      latestEuropeObservationDate: europeSeries.at(-1)?.date,
+      latestCpiObservationDate: baseCpi?.date,
+      sourceRefreshPolicy: "GitHub Actions refreshes official sources daily and fails release if the U.S. gasoline series falls more than 14 days behind FRED GASREGW.",
+    },
     policy: {
       sourceTier: "strict official",
       marketOverlay: "NASDAQ Composite via FRED is used as the long market-index proxy. DJIA is cited for context but not redistributed as a long raw series because of source copyright restrictions.",
@@ -414,6 +423,7 @@ async function main() {
       cpiBaseDate: baseCpi?.date,
       oilCompanyCount: oilStockSeries.length,
       gasMarketWeeklyChangeCorrelation: round(pearsonCorrelation(points, "gasWeeklyChangePct", "marketWeeklyChangePct"), 3),
+      sourceFreshnessMaxLagDays: 14,
     },
     series: points,
     annualSeries,
@@ -430,7 +440,7 @@ async function main() {
   await writeFile(new URL("series.json", publicDataDir), `${JSON.stringify(dataset, null, 2)}\n`);
   await writeFile(
     new URL("sources.json", publicDataDir),
-    `${JSON.stringify({ generatedAt: dataset.generatedAt, sources: dataset.sources, eventSources: events }, null, 2)}\n`,
+    `${JSON.stringify({ generatedAt: dataset.generatedAt, refresh: dataset.refresh, sources: dataset.sources, eventSources: events }, null, 2)}\n`,
   );
 
   console.log(`Wrote ${points.length} weekly observations through ${dataset.metrics.lastDate}`);

@@ -25,6 +25,8 @@ async function main() {
   ]);
 
   assert(dataset.policy?.noReddit === true, "Dataset must explicitly enforce no-Reddit policy.");
+  assert(dataset.refresh?.cadence === "daily", "Dataset must record the daily refresh cadence.");
+  assert(dataset.refresh?.sourceRefreshPolicy, "Dataset must include a source refresh policy.");
   assert(Array.isArray(dataset.series) && dataset.series.length > 1500, "Expected long weekly gas-price series.");
   assert(Array.isArray(dataset.annualSeries) && dataset.metrics.annualObservations >= 70, "Expected annual gasoline history back to 1949.");
   assert(Array.isArray(dataset.europeSeries) && dataset.metrics.europeanObservations > 1000, "Expected European Commission weekly petrol series.");
@@ -35,6 +37,8 @@ async function main() {
   assert(dataset.metrics.europeFirstDate >= "2005-01-01", "European series starts before approved source scope.");
   assert(dataset.metrics.firstDate >= "1990-01-01", "Series starts before approved scope.");
   assert(dataset.metrics.lastDate <= new Date().toISOString().slice(0, 10), "Series contains future-dated observations.");
+  assert(dataset.refresh.latestGasObservationDate === dataset.metrics.lastDate, "Refresh metadata must match the latest gas observation.");
+  assert(dataset.metrics.sourceFreshnessMaxLagDays <= 14, "Freshness gate should be 14 days or tighter.");
 
   for (const point of dataset.series) {
     assert(/^\d{4}-\d{2}-\d{2}$/.test(point.date), `Bad series date: ${point.date}`);
